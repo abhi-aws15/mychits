@@ -1,0 +1,2204 @@
+5. AWS EBS VOLUME PART1 
+Elastic Block Storage.
+When we format. We get sector also called blocks
+Various types of Aws block storage EBS,EFS,Ephemeral Storage or instance storage or temporal storage
+
+EBS- SSD(solid state drive)- 1)gp2 2)IO1
+     HDD [Harddisk drive]-1)st1  2)sc1
+     Magnetic Disk
+
+if u select gp2 u will get min-1GB max-16TB IOPS-16000 Throughput-250MB
+if u select IO1 u will get min-4GB max-16TB IOPS-64000 Throughput-1000MB
+if u select st1 u will get min-500GB max-16TB IOPS-500 Throughput-500MB
+if u select sc1 u will get min-500GB max-16Tb IOPS-250 Throughput-250MB
+if u select Magnetic Disk u will get min-1GB max-1Tb IOPS-NA Throughput-NA
+
+6.AWS EBS volume part-2
+create a instance
+1.choose ami=2.choose instance type 3.configure instance 4.add storage 5add tags 6security groups 7review
+
+in add storage we get root volume of 8GB its block storage. If delete on termination checkbox
+is checked then on termination of ec2 the volume will be delted
+
+if u uncheck the box..after terminatoin of ec2 the volume will be available there in the elastic block store
+. You can use it with other machines to retrieve the data
+
+7.AWS EBS PART3 (how to attach a new volume and use it )
+create a ec2 and connect it via command line interface
+#ssh ec2-uer@3.1.206.152 -i elbsingapore.pem  (run command where the key is)
+#sudo su
+#fdisk -l (to check the volume)
+#lsblk (we will see xvda)
+
+now go in the vol section on AWS. and create a vol.
+ -volume type = general purpose ssd
+ -size = 15gb
+ -availablity zone = should be same as that of ec2 otherwise it wont work
+ -snapshot Id= if u have taken a snapshot of othervolume..then if u give the snapshot id 
+                here, u all data will be copied while creatoing this vol
+create
+then actions=attach volume=which ec2 machine=done 
+------------------
+now fdisk -l on cmd line u can see new xvdf volume is attached
+#mkfs.ext4 /dev/xvdf (u format it)
+#mkdir /india
+#mount /dev/xvdf  /india/
+#vim /etc/fstab (permanent mounting)
+ /dev/xvdf  /india ext4 defaults 0 0
+#mount -a (to update)
+#df -h                      [to verify]
+
+#cd /india
+#touch abc{1..10}
+---------------
+now how to extend 15gb vol. to 20GB
+#go to aws volumes=modify volumes=15gb to 20gb=modify
+
+now if u go to the cmd line and type lsblk u will see xvdf 20gb
+but if u do df -h u will see 15GB ...as file system is assigned only on 15gb
+so resize command dalna padega
+#resize2fs /dev/xvdf
+#now if u do df -h u can see twenty gb resized
+------------------------
+Now using the 20gb volume on other ec2
+creating a machine2
+acces the 2nd machine through cmd
+#fdisk -l
+[first go to machine1 #umount /india unmounting is necessary so tht if sm process
+is going on ..it doesnot corrupt files..now go to volumes ..detach volume and then attach to machine2
+now on machine2
+#mkdir /delhi
+#mount /dev/xvdf /delhi    (mount anad use)
+#df -h
+#cd /delhi
+#ls (u see the data also)
+---------
+again machine 3 launch in availabilty 1c
+from machine2 umount /delhi ...detach volume on console and attach it to machine3..but
+it isnt posible as volume is in availblity 1a
+indirectly we can attach, we can create a snapshot and create a new volume from it and attach
+
+create snapshot-volume1....go to snapshots tab...u can see snap-volume1
+now action=create volume=select avai,zone 1c, name=volume2...
+
+now delete the previous volume and attach this volume to the machine3 and mount and enjoy
+
+8. AWS EBS Volume PART4
+By default root gets 8Gb we want to extend it. So go to volumes tab select the volume
+select action then select modify put 20Gb and modify
+#but inside machine its not updated in the os.....for that execute following command
+#growpart /dev/xvda 1
+#xfs_growfs -d /
+#df -h (ur root storage is now updated)
+
+9.AWS EBS PART5
+
+ the iops increases as the storage capacity we increases
+1-33.3 GB = 100iops
+from 34 gb storage u get 3iops extra per gb 38gb=114 iops
+
+burstable iops are iops which are not used and are creduted later when in need
+after 1000gb we dont get burst value
+
+
+in io1 we get 50iops per gb.. we can set iops also here 5gb=250 iops
+
+
+10.AWS EBS PART6
+aws s3 calculator ... add services and ur pricing will be generated
+ssd gp2 is free upto 30gb
+iops ssd io1 isnt free
+hdd is also not free
+magnetic is free 30gb
+
+
+
+
+11. aws EBS volume size reduce
+ec2 instance
+#df -h (u will see /dev/xvdg is 10gb mounted on /volume-2 ...and there are abc1to 100 files) 
+ first create a 5GB volume, name-volume3 same availabily zone
+attach it to your machine
+#fdisk -l (u cn see /dev/xvdf= 5GB)
+#mkfs.ext4 /dev/xvdf
+#mkdir /volume-3
+#mount /dev/xvdf /volume-3/
+#df -h (u can see /dev/xvdf mounted on volume-3)
+now sync volume 2 and volume3
+#rsync -aHAXxSP /volume-2/ /volume-3/
+
+now if u cd /volume-3 and do ls u can see data
+
+now unmount the 10gb volume and detach from console
+#umount /volume-2/
+detach and delete from console
+
+12. EFS- elastic file system
+u can compare it with nfs network file system.
+Earlier we used to build SAN storage..then we create a LINux server and configure NFS on
+it.and we create logical volumes on it. We used to share this logical volumes to the 
+other servers. Its costly actually 
+
+everything is manged by aws. But now u have to just mount it on ec2 or onpremises server
+and use it
+
+when u provision EFS u dont mention size. its unlimited. it increases as per your data.
+
+EBS can only be attached to one ec2 at a time. whereas efs can be mount on multiple ec2
+
+aws services=>efs=>create file sysytem
+select vpc default..select default all zones..if u select particular zones that means ec2 in
+those zones only can be connected to efs. There are several ec2s in that zones but to give access
+to particular ec2 we use security groups.
+
+.Make a security group EFS-SG...and security group rules we select NFS protocol and source
+anywhere
+now go to efs=>create file system..select one availaibily zone and select EFS-SG security group
+add tags
+Name EFS server..
+
+now everyting be default and create file system
+---------
+create 3 ec2 server1(useast1a) server2(useast1b)
+now try to mount efs on server2
+#yum install -y amazon-efs-utils
+#mkdir /efsclient
+#mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs- 82ff5d61.efs.us-east-1.amazonaws.com:/ /efsclient
+#df -h to verify mounting
+
+if u try server1 to mount its not possible becoz of different availabily zone
+
+we can modify efs...=> File systems => manage file systems (u can add sg and availabilty zone here)
+now if u try on server1 it will work
+#cd /efsclient
+#touch abc{1..2}  you can see this files on other server also thats the beauty of nfs
+-----------
+now if u create a new ec2 in same availabily zone and try similar steps. Then u can mount efs
+but to give access to only one ec2 u have to mention private ip of the server in the inbound of
+security groups NFS-SG (remove anywhere)
+
+13.AWS EPHEMERAL STORAGE
+Instance storage or temorary storage.
+used to keep temporary data. If it is mounted on any ec2 if it stopped and start we lost the 
+data, data persists on reboot though
+
+ephemeral storagae is in local ec2. So there is low latency. Whereas ebs and efs are network based so there is possibility of latency
+Ephemeral is the fastest of all three as it is setup locally and low latency. It is free of cost. But the ec2 supported is not 
+available in free tier. 
+
+as AMI and hardware dploys on ebs we r going to choose image on seconday volume and 
+select hardware m5ad.large as it is 1x75 ssd ..75 gb is ephemeral... create ec2
+#fdisk -l (u can see ephemeral  storage)
+#mkfs.ext4 /dev/nmve1n1
+#mkdir /ephemeral
+#mount /dev/nmve1n1 /ephemeral
+#df -h to verify
+#cd /epehmeral
+#touch abc
+
+now reboot ec2 and check if u loose data or not.
+but u didnot make the mount permanent so again mount on the same folder and cd into that
+folder and do ls ..ur data persists
+but if u stop and start you will lose data
+--------------
+amazon linux image can be deployed on ephemeral storage, while creating instance we can choose 
+commnity amis. THe root device type: instace store is ephemeral type only...select any and launch
+
+u cannot stop this innstance.. from terminal if u poweroff it means terminate
+
+usecase- for testing purpose as u need high storagge and u dont need to pay for it
+
+14. EC2 instance type-
+[family]
+General Purpose=>instance type( A1,T2,T3a,T2,M5,M5a,M4)=>sizes(t2.nano,t2.micro,t2.small)
+
+Compute Optimize(if u need high configuration cpu)
+
+Memory Optimize(high ram upto 12gb ram)
+
+Accelerated Computing(high level graphics)
+
+Storage Optimize(high level storage)
+
+interview question: Can we increase ram of ec2?
+answer:
+launch a ec2 with t2micro and access the machine
+#free -h (to see the ram)
+
+First we go to action, instance state then 'stop' the machine.. then we go to instance
+setttings and change innstance Type select t2.large and apply. Now start the machine again
+and use command #free -h to verify 8GB ram.
+
+15.EC2 On demand pricing
+each month 750 hours is free
+then it charges by on demand pricing model
+partial hours converted to the full hours (stop start is counted but reboot is not counted)
+no capacity guarente(means in aws data center the hyperviser blocks r full and u have to wait in que to get a place foryour vm)
+
+
+16.AWS EC2 Reserved Instance Pricing
+benifits- capacity guarantee (payment methods
+                               -no upfront
+                               -partial upfront
+                               -full upfront
+                              2 terms available-1year -3year
+                              
+Drawback- No cancellation
+        - if u stop instances then also it charges because u have reserved instances
+
+u can put it for resale... in that case u have to pay only for the months you have used
+
+How to create reserved instances?
+Go to instances, select reserved instances, purchase reserved instances, then select options
+Platform- Linux/UNIX
+instance type- t2.micro
+tenancy-default
+term-1-12 months
+offering class- convertible (means u can change instance type lateron)
+Payment option- no upfront
+
+then we search and add to cart for provisioning
+----
+Aws ec2 reserved instances provide a significant discount upto 75% compared to on demand 
+pricing and provide a capacity reservation when used in a specific availability zone.
+
+17. SCHEDULED RESERVED INSTANCE
+drawback of reserved instances- once u have reserved your money is gone. Its reserved for a year and u
+have to pay for it
+if a devloper says i have to use a ec2 from 8am to 5pm. if its ondemand then may be he has wait in que
+if he uses reserved instances then after 5 if he is not using then also he has to pay for it.
+so now you can reserv shedule basis horly,monthly or weekly
+
+lab-
+its not available on mumbai region. lets go to northern virgnia
+click on shedule instance,purchase schedule instance
+starting on-1june 9utc    for duration-4hours
+recurring-daily,weekly (it should be greater than 1200h/yr 100h/month 24hrs/week 4hrs/day)
+
+platform-linux instance type-
+availabityzone-any
+
+now search and add to cart
+
+18.SPOT INSTANCES
+IN AWS DATACENTRE, there is hyperviser. They start bidding on ec2 for unused capacity on hyperviser
+for using it. They charge less than on demand and named it as spot instance. If u provision 
+it for 2rs and some other customer provision it for 3rs aws will terminate from u and give it to the new customer
+this is the drawback. but now u can hold it to sm hours its a new feature.
+Its used for testing purposes..it will be cost efficient.
+Its also used in production env also. It can be used in auto scaling , when laoad increases i want 
+to provision spot instances as it is cheap and as the instances and come and go at any moment
+
+
+lab-
+spotrequests,request, choose defined duration workloads(we can reserve it for 6hrs)
+ami,instances type,vpc,az,keypair then launch
+
+or while launching normal ec2 .. u can select puchasing option under configure instance ..
+request spot instannce and u can bid higher than the priceing history and reserve a instance
+
+19. DEDICATED INSTANCE
+
+on aws datacentre , every type of instance is running on hyperviser this is called sharedhosts
+As everything is on same hypervisor we can issue of privacy,latency,security issues.
+
+So dedicated instance came in picture. for one customer one hypervisor is dedicated
+but conditions are u have to launch ec2 from M sseries, pricing is same as others but they
+charge for the host hyperwiser 2dollars for hour. 
+
+launch instance-next-next- in tenancy dedicated instance then next next next 
+
+20.DEDICATED HOSTS
+
+we bind our license with hardware, if the hyperwiser is changed the we have to bind it again
+as tthe mac address changes. so we look for dedicated hosts.
+lab-
+select dedicated hosts,allocate, instace type,az,quantity next next
+
+21.LAUNCH TEMPLATES
+
+we mention everything in this template and launch the template. It saves time to select configuration
+launch template-create launch template-name mytemplate- version1
+ami id,instancetype,vpc,sg,network,ebs,tags(name myec2)
+create launch template
+
+in templates tab....launch instance from template
+
+22. EC2 CAPACITY RESERVATION
+
+suppose ..inside region therr are zones in zones there are datacenters and in datacentre
+there are hypervisor
+u reserve capacity...now u can launch ondemand ins on ur capacity capacity.
+now there is no fear of loosing the same hypervisor if u stop and start the instance
+. u have already reserved the capacity
+
+capacity reservation-create-instance type choose-platform-zone-tenancy-
+reservation ends(manual), give tag name=mycapacity create
+
+now u can launch instance in the respective capacity
+
+24.IAM identity and access management
+
+Sanjay dahiya=>my security credentials=> click here to change password (u can do it)
+MFA- activate mfa- virtual mfa device- install google authenticator on mobile- scan the qr code
+on console- enter two consecutive mfa codes on console
+u2f security key- its a device.. u can authenticate via this device..looks like pendrive
+gemalto token- its a device, the code comes on this device
+
+25.MANAGE ACCESS SECRET KEY  you cannot provision aws services with commandline if u dont
+have accesskeys
+click Access keys=>create new access keys (u can see access key id and secret access key)
+
+on cmd 
+#aws configure
+ put aws access key id and secret access key, default region name us-east-1 and
+default output format [table]: table
+#aws ec2 describe-regions 
+
+
+btw u can create only 2 accesskeysecretkey
+
+26. IAM USER AND ASSIGN POLICY
+under IAM tab... users..add user..
+username- dev-user
+          prod-user
+Access type- programmatic access
+             aws management console access       (giving both access)
+console password- autogenerated
+                  custom
+require password reset- check the box
+
+next permissions.....
+Set permission
+u can see "addusers to group" "copy permissiond from existing user" "attach existing policies"
+next give tag, and create user
+u will see the credentials u can mail them to the users
+
+on other browser
+account alias, iam username and give password and login
+by default u cant read and write anything... we hahve to attach policies for that
+
+user-dev-user-add permission-attach existing policies -ec2readonly
+
+now u can read the machines.
+
+You can create custom policy...create police- visual editor and json
+in visual editor 
+service-ec2
+action-stop instance
+resources-all resources
+now click on the review policy
+name- stop@ec2instance
+creating policy....
+
+now go to filter policies,click customer managed policies u can see stop@ec2instance
+
+now go to user, select permission, attach existing policies, customer managed policy ,se
+select stop@ec2instance
+
+now if u login with iam user and try to stop the instance u can stop it.. but u cant start it
+so for that u have to edit the policy and add policy of start toit.
+
+But dev-user can do anychanges to his server as well as other servers of prod user so to 
+block that we are going to edit the policy and in 
+
+resources-specific (we select specific)
+ here we add arn of the instance
+  REGION- us-east-1
+  ACCOUNT- UR ACCOUNT ID
+  INSTANCE ID-
+Request condition- mfa required
+                   source ip
+means this thing works only if dev-user has mfa activated or he is accessing from his ip lappy
+
+review and save policy... now he can stop only dev-server not prod-server
+
+27.CREATE POLICY USING JASON TEMPLATE
+two users dev-user prod-user
+prod-user has only read only policies ........
+now attach existing policies...create policy..JSON
+on google-how to create start stop iam policy aws.....copy and paste syntax
+
+28. IAM GROUP CONCEPT
+create a iam group .. add a policy to group... now u dont have to add policy to each individual 
+users just add users to the group
+select groups-create new group-name:dev-grp-next...now add policy ec2readonly......create group
+
+
+now add all the members to the group
+
+29.IAM ROLE
+
+It is used to make communication between two services.
+
+create a instance and create a bucket...now mount bucket on ec2
+#sudo su
+#which s3fs
+#yum install automake fuse fuse-devel gcc-c++ git libcurl-devel libxml2-devel make openssl-devel
+#git clone https://github.com/s3fs-fuse/s3fs-fuse.git
+#cd s3fs-fuse
+#./autogen.sh
+#./configure --prefix=/usr --with-openssl
+#make
+#sudo make install
+#touch /etc/passwd-s3fs
+#vim /etc/passwd-s3fs
+ accesskey31314bs:secretkey234ogkg45
+#chmod 640 /etc/passwd-s3fs (so that other user cannot open this file)
+now mount s3 on ec2
+#s3fs sanjaydahiya2019bucket /mnt/ -o passwd_file=/etc/passwd-s3fs
+#df -h to verify
+
+the main drawback is some one can steal ak and sk from the machine and connect to s3 ..
+
+therefore we use role to make communication between two services
+ON IAM
+roles-create role-which service is using role ec2-permission s3fullacces- name s3role-
+
+name s3role
+
+now go on ec2 dashboard select ec2 then select instance setting attaaach iam ROLE
+now mount on ec2
+#s3fs -o iam_role="s3role" sanjaydahiya2019bucket /mnt/
+#df -h to verify
+
+------------
+make a user 
+add user- s3user- programmatic access (u will ak and sk), attach existing policies s3fullaccess
+give tag and create user
+
+
+30. IAM ROLE CONCEPT PaRT2
+Cross region - means communicatio between user in one account to resources in other account
+.make iam role in resource account
+.choose role,another aws account, give acc id of anotheraccount(in which user is)
+.next,attach permissions policies,ec2fullaccess and cloudwatch
+.name-roleforotheracc       create
+
+Now go to the role copy the ROLE ARN and send it via mail to other user account
+.create a iam user in other account
+.we need a role that will switch account to get the role from other acc
+.Add permission,create policy,json,go to policy generator tool
+  iam policy
+  aws service-aws security token service
+  action-assumerole
+  arn- paste from other account
+Generate policy
+.copy policy and paste it on json..review policy..name-userpolicy..create
+.go to policies..customer managed policy..attach the policy to user
+
+now login as the user1.. click on the profile and select switch role
+  acacount-paste other account id
+  Role-roleforotherac
+ switch
+now user1 can do ec2 and cloudwatch on other account.
+
+31. IAM LAST 
+Identity Provider
+we can login to aws via fb login id pass or gmail loginpass
+
+32.AWS cli configure on windows 10 machine
+ on aws data centre there are services provisoned there..when we click on s3 or ec2 on webconsole
+it calls an api in the background.....
+we want to do this through command line
+
+on google we download aws cli installer for windows
+
+we install libraries of aws then on cmd line
+#aws help (to verify)
+#aws configure
+ aws acceskey- paste
+ aws secretkey- paste
+ default region-us-east-1
+ defalut output- table
+#aws ec2 describe-regions
+
+33. AWS CLI ON REDHAT LINUX
+#aws --version
+#curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+#unzip awscli-bundle.zip
+#sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+#sudo /usr/local/bin/python3.7 ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+#/usr/local/bin/aws --version
+#cp /usr/local/bin/aws /bin
+#aws --version
+#aws configure
+ put ak and secret keys default regions
+
+35. AWS cli command
+
+copy from google and modify
+
+36. S3 BASIC 
+For archiving and backup ..logs data 
+99.999999999% durability and availability 
+unlimited GB
+
+amazon s3-create bucket-bucketnameshouldbe unique- give region
+uncheck block all public access.....create bucket
+
+upload files.. then make the object PUBLIC and send the object url to others for access
+
+37. S3 bucket mount on linux
+
+#which s3fs
+#yum install automake fuse fuse-devel gcc-c++ git libcurl-devel libxml2-devel make openssl-devel
+#git clone https://github.com/s3fs-fuse/s3fs-fuse.git
+#cd s3fs-fuse
+#./autogen.sh
+#./configure --prefix=/usr --with-openssl
+#make
+#make install
+#which s3fs to verify
+#touch /etc/passwd-s3fs
+#vim /etc/passwd-s3fs
+ your_accesskey:your_secretkey
+#chmod 640 /etc/passwd-s3fs
+#mkdir /mys3bucket
+#s3fs awscloudindia2019bucket /mys3bucket/ -o passwd_file=/etc/passwd-s3fs
+#df -h
+#cd /mys3bucket
+#ls (to verify)
+u can generate files
+
+38. S3 bucket mount on windows
+download and install TntDrive on windows machine
+secretkey accesskey and choose bucket to mount.
+
+(create a iam user with programmatic access and attach policies s3fullaccess.. then provide
+ak and sak to that software)
+
+39. STATIC website hosting 
+upload index.html file and go to action and make public
+.go back selct the bucket select the properties and enable static website hosting
+ index document- index.html
+ save........ and paste the static website hosting endpoint on the browser
+
+40. S3 Versioning Concept
+Properties,versioning,enable versioning- save
+create a file index.html 
+if u delete it ................ Then go in show version... u can see the data
+
+if u copy same file twice it maintains a version...with version id
+
+41.
+
+
+
+42. s3 Requester pays 
+
+Suppose you have two accounts dev aws account and Prod aws account.
+Devaws account- awsclass2019bucket with a 100GB data in it
+but if in prod aws account anybody wants that 100GB data. 
+
+then devaws will enable requester pay so whenever prod-aws account download he has to pay for the data not you.
+when requester pay is enabled anonymous acccess to this bucket is disabled.
+
+in bucket properties, enable it
+
+43. S3 storage class
+.s3 standard- By default if u upload object it goes to s3standard.
+              data replicates on three or more than three zones.
+              frequently accesseable.high available
+.Inteligent-Tiering
+
+.S3-stanard-IA- data replicates on three or more than three zones
+                infrequenty access.99%
+.One-zone-IA- replicates in onle zone only
+              infrequent, 98% chances 
+              basically used for secondary backup
+.glacier-repliates on three or more than three
+         cannot be accessed frequetly.
+         conditions applied like if u want data in 3-5 mins u will be charged differently
+         or 4-5h u will be charged differently 5-12 different
+
+.deep glacier
+
+
+when we keep back up of server first it comes standard storage(30days)...the u move to 
+standard IA(60days).....now u dont need the backup u move it to glacier.
+
+to get back from glacier and deep archive ...go to action,restore
+ . Number of days the restored copy is available
+  3 days (for 3 days the data will come into standard IA and you have to retrieve it within
+ 3 days or else it will again go back to glacier)
+. Restore tier 
+ bulk retrieval(5-12 hrs)
+ standard retrieval(3-5hrs)
+ expedited retrieval(1-5 mins)
+
+44.S3 Lifecycle Rule
+automate the selection of storage class... based upon the use case of data
+
+bucket,management,add lifecycle rule
+.name-mys3liferole
+.storage class transition 
+ current version and previous version both 
+.add transition
+ transition to standardIA after       30days
+ transiton to glacier after            60 days
+.EXPiration
+ -current version
+  expire current version after 3650 days
+ clean up expired object delete markers
+ clean up incomplete multipart uploads
+review and save
+
+45. S3 Pricing
+factors on which s3 billing happens
+.Amount of data (GB's) which is store on s3
+.BAsed on storage class
+.The amount of data out which happens from your bucket-Data out changes you have to pay
+.The amount of request which happens on your s3 bucket 
+.Request put object,get object,delete object ,move object ,list object.
+
+46. s3 Cross Region Replication
+if we keep a data in a bucket on north virgnia ... and if by accident the zone 
+crashes then aws wont provide diaster recovery. 
+So what we can do is we go to other region and create a bucket and replicate the source bucket with
+the destination bucket.
+
+create bucket-sanjaydaiya2019-northernvirgenia-unblock public
+
+create bucket-sanjaydaiya2019-mumbai-unblock public
+
+before performing crossregion replication ..versioning should be enabled in both the 
+buckets
+select buckets-properties-versioing-enable
+
+now replication---------
+source bucket-management-replication-add rule-set source (entirebucket)---destination
+bucket (give name)-next- IAM role(create nw role) give name- save
+
+testing - upload file in soure bucket ... you can see it in destination bucket
+
+47. S3 Cross account access
+in fortune company
+there is one aws acount called access account(with iam users harry,rahul,kaaran,bob)
+
+and another account called resource account (s3,ec2,ebs)
+
+creating a accessuser and gave him programmatic access then next:permission 
+attach existing policy->s3fullAccess... add tag and create user
+Now u get accesskey ID and Secret access key...login via commandline
+on commandline
+#aws configure --profile accessuser
+ acesskey-here
+ secretkey-here
+ defaultregion-us-east-1
+ output-table
+
+on resource account create a bucket sanjaydahiya2019 in northern virgenia, unblock all the 
+public access
+upload files
+now we have to give bucket policy so that access user can access it from access account
+
+{
+   "Version": "2012-10-17",
+   "Statement": [
+       { 
+           "Sid": "111",
+           "Effect": "Allow",
+           "Principal": {
+               "AWS":
+                   "arn:aws:iam::062701644392:user/accountA" 
+           },
+           "Action": "s3:*",
+           "Resource": [
+               "arn:aws:s3:::sanjaydahiya2019",
+               "arn:aws:s3:::sanjaydahiya2019/*" 
+           ]
+       }
+   ]
+}
+
+
+go to accessuser there u will find user ARN
+bucket arn right above beside the bucket policy
+
+#aws s3 ls s3://sanjaydahiya2020 --profile accessuser
+u can see the contents
+
+48.VPC (how to setup own private cloud)
+
+Inside aws cloud...there is vpc...inside vpc there are two subnets(az1 and az2). subnet
+communicate each other by default through a router by aws
+
+Lab----
+YOUR VPC,Create VPC 
+Name-HCL-PROD-VPC
+ipv4 cidr block 10.0.0.0/16
+
+now go to subnet,create subnet
+Name=web-subnet
+vpc=hcl-prod-vpc
+vpc cidr=10.0.0.0/16
+ipv4 cidr block= 10.0.0.0/24
+
+create subnet
+Name=DB-subnet
+vpc=hcl-prod-vpc
+vpc cidr=10.0.0.0/16
+ipv4ncidr block= 10.0.1.0/24
+
+Now go to ec2 launch two instance..
+configure instance
+network- vpc hcl-prod-vpc
+subnet- WEB-SUBNet
+auto assign public ip- Enable
+name- web-server
+create machine
+
+another machine
+network- vpc hcl-prod-vpc
+subnet- DB-SUBNet
+auto assign public ip- Disable
+name- DB-Server
+create machine
+ 
+
+webserver got two ips private and public...DBserver got private ip only
+But we cannot connect to both of this machines we need to create IGW and
+attach it to vpc
+.vpc, create internate gateway, name-HCL iGW
+.select HCL-IGW,actions,attach to VPC (HCL_PROD-vpc)
+
+Still we cannot access the machines becoz we need a router..means we have to
+create route table
+.Route table,create route table,Name tag-WEB-RT, VPC-HCLprod-vpc and create
+ select WEB-RT
+  -subnet associations
+    edit subnetassociation- we select WEB-SUBNET
+  -edit routes
+     DEstination       TARget
+    10.0.0.0/16        local
+    0.0.0.0/0     and select HCL IGW
+---------
+now connect Web-Server EC2 through laptop you will be able to
+#ssh ec2-user@publicip
+
+now we have to access DBServer by sitting here at WEBserver. We need that key
+#vim master.pem
+ copy the content of the file
+#chmod 600 master.pem
+#ssh ec2-user@1dbserverprivateIP -i master.pem
+
+you will be inside db server .....now try internet here it wont work
+SO we create nat gateway (attach it to subnet pointing towards internet)
+- subnet- Web subnet
+  Elasticip- u will get
+
+create Route table 
+name- DB-Rt
+vpc- HCl-prod-vpc
+Inside DB-RT
+ -subnet assosiates
+   -db subnet
+ -edit routes
+     DEstination       TARget
+    10.0.0.0/16        local
+    0.0.0.0/0     and select NATGATEWAY
+Now internet run in db server
+
+49. AWS VPC PEERING
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+Peering connection->create peer connection
+name tag- Dev to Test
+VPC(requester)- vpc in dev account
+
+Select another vpc to peer with
+  Account- another account
+  Account ID- give account id of that another acc
+  Region- another region ,singapore (we have made vpc in singapore in other machine)
+
+VPC accepter- vpc id of the singaporeof other account
+
+accept the peering request from test account
+
+one more thing you have to do is create routetable on both the accounts and mention
+that the traffic goes through peering.
+
+Go to dev account,Route Tables,Route ,edit route
+destination        Target     status
+10.100.0.0/16      local
+0.0.0.0/0          igw-02d950776c7056882
+10.200.0.0/16      peering 
+
+same go to the other account and set route table in that VPC
+
+now
+#touch northvirgenia
+#rsync /root/northvirgenia root@privateipofothermachine:/tmp
+
+50. Site to site VPN LAB
+create a VPC(AWS-SIDE)10.100.0.0/16..Create a Subnet in it..Make a InternetGATEWAY..Then configure the 
+Route tables. Launch a ec2 inside this VPC
+
+Now for on Premises Machine, make a vm on vmware and assign a public IP
+
+Or make another VPC 10.200.0.0/16 on ANOThER ReGION and launch a machine named (onpremises) on aws
+
+if u try to ping each other with there private ip..it wont work......
+-------------
+Now be in aws side...(N.california),Go in vpc service and under VPN select Vitual Private Gateways.
+ Name-AWS-SIDE
+      create
+now attach this vpn with VPC AWS-SIDE
+
+Now create a customer GAteway in which we mention public ip of on premesiss gateway point
+ Name-ON-PREMISES
+ IP Address- publicip of onpremises machine
+
+Now we will make a site-to-site VPN connection tunnel
+Creat VPN Connection
+ Name tag-AWS-TO-ONPREMISES
+ Virtual Private gateway= AWS SIDE vgw
+ Customer Gateway= ON PREMISES
+ Customer Gateway ID=
+ Routing=Static
+ Static IP Prefixes=10.200.0.0/16 (on primises VPC's IPcidr)
+
+Tunnel Options
+ Inside IP CIDR for Tunnel1     
+ Pre-Shared Key for Tunnel1
+ Inside ip CIDR for Tunnel2
+ Pre-shared Key for Tunnel2
+                                 this are all generated automatic by aws
+Create VPN connection
+
+
+Now we have to go to the route TAble we have created in the beginning
+edit root
+ DESTINATION   TARGET STATUS 
+ 10.200.0.0/16  virtual private gateway
+
+dont do the above, the best practice is go in the ROUTE PROPAGATION and TICK mark the Propagate [save]
+If your tunnel is up it will automatically add it to your route table
+
+Now go to site-to-site VPN connection and Download configuration and send it to onpermises team.
+they will gather collective information, and theywill setup gateway point.
+ Download configuration- Vendor (Generic)
+                         Platform (Generic)
+                         Software (Vendor Agnostic)
+On onpremises machine
+#yum install openswan
+#vim /etc/ipsec.conf  (as it is using ipsec protocol we will do the configuration)
+ include /etc/ipsec.d/*.conf (This should be uncommented)
+
+#vim /etc/sysctl.conf
+ net.ipv4.ip_forward = 1
+ net.ipv4.conf.all.accept_redirects = 0
+ net.ipv4.conf.all.send_redirects = 0
+
+#vim /etc/ipsec.d/aws-vpn.conf  (create this file)
+ conn Tunnell
+        authby=secret
+        auto=start
+        left=%defaultroute
+        leftid=3.89.62.46 (paste customer gateway ip from downloaded configuration file )
+        right=13.127.4.210   (virtual private network ip)
+        type=tunnel
+        ikelifetime=8h
+        keylife=1h
+        phase2alg=aes128-sha1:modp1024
+        ike=aes128-sha1;modp1024
+        keyingtries=%forever
+        keyexchange=ike
+        leftsubnet=10.200.0.0/16   (on premises vpc)
+        rightsubnet=10.100.0.0/16  (on aws side vpc)
+        dpddelay=10
+        dpdtimeout=30
+        dpdaction=restart_by_peer
+
+#vim /etc/ipsec.d/aws-vpn.secrets
+       [customergatewayIPfromdownloadedfile] [virtualprivategateip]: PSK "presharedkeyinsidefile"
+
+#chkconfig ipsec on
+#service ipsec start
+
+now to verify everything see tunnel is up and route is automatically configured
+
+now if u ping both the machines to each other using private ip
+#ping 10.200.0.113 it will work
+
+51.Client VPN endpoint
+In site to site previous lab if you have to connect to aws private cloud then u have to be 
+on premises location. You cannot connect from anyother remote location
+
+but client VPN endpoint u can connect from anywhere..usecase u use a vpn software from home laptop
+to connect to company's datacentre.
+
+See video once again
+
+52. OpenVPN Setup
+we can access private datacentre from our public network. We are going to take an example
+of instance which has only private ip and we connect it through our laptop.
+
+A instance is already there.     it has private ip
+
+create another instance..choose ami from market place,ssearch openvpn access server
+choose instance type-t2.micro 
+configure instance- network- myvpc
+                    subnet- public subnet (subnet pointing toward IGW)
+                    auto-assign publicIP- Enable
+next-next-
+
+security groups- the protocols should not be changed just put source "anywhere"
+choose key, name tag and launch the machine and connect through Putty
+Login as: openvpnas
+press enter enter enter enter
+copy client UI: https://18.136.100.223:943/
+
+paste on browser
+  -advanced and proceed
+here a portal opens to put username and password ... set password on putty
+#sudo su
+#passwd openvpn
+ enter new pass
+
+now on portal
+Username-openvpn
+passwd-
+
+Openvpn connect for windows download....then install.... 
+now a icon appears at the bottom corner... connect it ..give username openvpnas and passwd
+u will be connected to the vpn.
+
+"GOAL achieved-Now you connect to private machine using private IP"
+
+53. AWS VPC ENDPOINT
+can we connect s3 from our laptop?command line access
+#aws configure
+ acesskey
+ secretkey
+region- ap-south-1
+output table
+#aws s3 ls
+#aws s3 ls s3://sanjaydhiya2019
+u can see
+----------
+what add on configurations we have to do see s3 from laptop without internet
+
+one vpc,two subbnets(one public,one private),public subnet is exposed to internet
+two ec2s one in public subnet and other in private subnet. Public machine gets public and private
+ip...private machine gets only private ip... o route table we mentioned the source subnet(public)
+and pointing towards IGW 0.0.0.0/0
+
+.now connect public server via putty and ping 8.8.8.8 u can see inter net works.. now check if
+u can see s3
+#aws configure
+ ak
+ sk
+ default region
+ output
+#aws s3 ls
+#aws s3 ls s3://sanjaydahiya2019
+
+now we have check if private server can ls the s3 or not ..so we jump from public server to private 
+server.
+#vim mumbaikey.pem
+ copy content
+#chmod 700 mumbai.pem
+#ssh ec2-user@privateip -i mumbai.pem
+
+now u are inside private server
+#aws configure
+ ak
+ sk
+ region
+#aws s3 ls (it wil not work as public ip is not there)
+
+so we use vpc-endpoint service to connect internally privately from private macine to bucket
+benifits- low latency, secure,dont have to go to internet,cost is saved
+
+vpc-endpoint,create endpoint, select aws service s3
+u will see routetable , click the checkbox and create endpoint
+#aws s3 ls (it will work but there is no internet here)
+--------------------------------------------------------------------
+on premeses will be connected to aws vpc via VPN or DC then create a VPC endpoint between
+vpc and bucket. and define the route TAbles******interview
+
+54.AWS Security Groups
+its kind of firewall. It has both inbound aur outbound rules. 
+we hit public ip address, and public ip translates to private ip and in between that it 
+checks the inbound rule in sg
+again watch the video...
+
+55.AWS ACL and Security Groups
+sg is defined on machine...but acl is defined on subnet or network. It is also kind of firewall.
+after hitting public ip..it travels through the vpc to the subnet to translate
+it to private ip but before subnet there is ACL where it checks port 22 and when it passes it also checks in SG
+then it comes through outbound of sg then outbound of acl then it comes to our laptop
+
+Go to subnets, select subnet and below u can see network ACL... by default all traffics are
+allowed in inbound and outbound
+
+create Network ACL (u can find in subnet)
+name -Prod-ACL
+vpc- default
+by default all traffic is denied
+
+now edit subnet assosiations
+ select ur subnet
+
+Now if u ssh ur machine u cant access the machine , as the acl is blocking you
+now go to inbound rules,edit inbound rules..add rule
+ssh 22 0..0.0.0 allow and save
+edit outbound rule also otherwise u wont be able to get session
+on outbound it checks port from 1025-65535 as the source ip and source port(taken from client side) taken from laptop to
+machine.
+
+
+0-65535
+
+0-1025 (server side)  1025-65535(client side)
+
+ACl outbound rule
+rule-100 type-custom tcp rule port-1025-65535
+
+now try to get the session you will get it
+
+56. AWS ENI elastic network interface
+
+launch an ec2...bottom we can see Network interfaces-eth0
+
+create Network Interface 
+Description- MY-ENI
+subnet- same as ec2 az
+IPv4 private ip- auto assign
+Security group- Prod-SG 
+create
+
+action=>attach=>instanceid
+
+Now do #ifconfig u can see eht0 and eth1
+but there is no public ip on eth1 we have to do it separately 
+
+elastic ip- allocate new address (amazon pool)
+now action-assosiate ADDRESS- we will select network interface
+                             network interface name- MY ENI
+                             private ip
+associate
+
+now check eth1 yu get a public ip.. if u hit both the public address u can access the configured
+http on the machine
+
+Network interface- action, detach
+
+first detach then delete and release elastic ip also
+
+57. AWS IP Address
+
+three type - private ip add , public ip addr elastic ip add
+
+if u stop and start a instance you will loose the public ip and get a new ip.. so thats 
+why we use elastic ip
+
+58. Elastic load balancer
+
+target group- collection of ec2 instance
+
+snapshot of the video taken, refer to video once again
+
+59. Elastic Load Balancer Lab Part-1
+
+Create 4 ec2 machines(software1 software2 Image1 Image2)
+access the machines and configure apache on all machines 
+#yum install httpd
+#cd /var/www/html
+#vim index.html
+ software1
+#systemctl start httpd
+#systemctl enable httpd
+
+do it in all the machines with different index.html
+
+Load balancers,create load balancer, select application Load Balancer(HTTP,HTTPS)
+Name-  Prod-ELB
+sheme- internet facing
+Ip-addressType- ipv4
+
+Listeners
+HTTP, HTTPS (choose one)
+
+VPC- default
+
+AZ - select all availabily zones
+
+Tag .. give name and value
+
+create security Group Prod-ELB-SG(inbound http,https)
+
+.Configure ROUTING
+ Target Group
+     name- Prood-Default-TG
+     Target type- Instance
+     Protocol- Http
+     Port- 80
+Health checks
+     Protocol-Http
+     path- /
+Advanced health Check settings
+     Port-
+     Healthy threshold-2 (2 times it will check before considering healthy)
+     unhealthy Threshold-2 (to consider it unhealthy, it will check 2 times)
+     timeout-5 (it will wait for 5 sec to get response while cchecking)
+     interval-30sec (after how many secs it will go for health check again)
+     success codes- 200 (apache success code)
+
+next, register Targets..select all instance Add to registered
+
+Next,create loadbalancer
+
+Now u get DNS Name of the LOAD BALANCER...paste that on browser and check round robin fashion
+
+60.How to map ELB with Domain Name using AWS Route 53
+
+Copy the DNS name of ELB..go to route53..
+there is a hosted zone sanjaydahiya.com..click on it and create Record Set 
+  name- www(.sanjaydahiya.com)
+  Type-A-1pv4 add
+ Alias-yes
+ alias target- Choose ELB dns
+create
+
+61. ELB Healthy Unhealthy LAB
+
+Systemctl stop httpd (to unhealthy a machine) now if u check on browser you will get bad gateway
+..but unhealthy declared when it crosses the threshold u will stop seeing bad gateway 
+and traffic stop getting to the machine
+u can see unhealthy instance in target group
+
+62. ELB Connection Draining LAB
+In Target Groups, select target group,in description,attributes then edit attributes
+Deregistration Delay- 300  (This is called connection Draining)
+
+Means suppose aws administrator deregister instance for trouble shooting an ur customer
+is doning sm transaction thriugh that ec2 server..so the session might get closed at once.
+So to prevent this connection draining concept is used. means ec2 cannot be deregistered
+at once. It just stops new traffic to come , it only servs the old traffic.
+
+63. How to Add SSL Certificate to EC2 Load balancer
+
+Go to certificate manager
+u should have two prerequisites domain, and email with exchange servers
+
+get started, request a certificate 
+1) add domain name *.sanjaydahiya.com
+2) Validation method (DNS validation method)
+  next, request,confirm and continue
+Now u get a name and value ... u have to put in your DNS servers whereever you have hosted it
+(aws,godaddy whereevr)
+if on aws ...create record set Name= copy from ssl certificate request
+                               Type= cname
+                               value= copy from ssl
+
+Now go to certification, ur pending validation will be issued
+--------------
+Now go to load balancer, attach certificate in listener,
+add listener port- https,
+             forward to- default group
+             default SSL certificate- choose the certificate
+                                                                          save
+-------------------
+But if you want that customer wants to access www.sjaoj.com without https then we 
+will redirect it
+Loadbalancer,myelb, Listeners- Http:80 (we hv to edit settings in http)
+                               add/edit rule
+           click on plus+,insert rule,if Hostheader(enter www.sanjaydahiya,com)
+                                      then redirect to HTTPS 443                 ok and save
+
+now if customer only type www.sanjaydahiya.com then they will be redirected to https
+
+64. AWS Host based Routing in Application LOad Balancer
+when customer hits www.sd.com.. traffics come to elb.. then the listeerner listen to it and passes
+on to target groups.
+when customer types software.sanjaydahiya.com it should only go to the software related servers
+and display software contents for that we have to add a new target group 
+
+create target group- Name-Software
+                     healthh check setting krlo thodi bhot
+   in this software target group add software instances to register
+
+                     Name-Image TG
+         add image wali instances in this group
+----------
+Now go in ELB , listeners .. select HTTP one and add rule
+                click on plus,insert rule ,if Host header = software.sanjaydahiya.com
+                                           then Forward to= software
+
+                                          if Host header = iamge.sanjaydahiya.com
+                                           then Forward to= image
+--------------
+Now go to route53 Hosted zones=create record set
+                                      name= software.(sanjaydahiya,com)
+                                      alias=select your load balancer
+ 
+                                 name= image.(sanjaydahiya,com)
+                                      alias=select your load balancer
+
+65. How To get ELB logs
+ GO  to S3 and create bucket- elblogs2019India, next then uncheck "block all public access" Next and create
+
+Now go to Loadbalancer My-ELB, below there are Attributes select it, Edit attributes-
+ access logs- enable
+              s3 bucket name-elblogs2019ndia123
+                      tick the Create this location for me ........... save
+
+now access the elb dns for few times and check s3 bucket for logs
+
+66. AWS Auto Scaling
+step1- application configure on instance
+step2- Image
+step3- Launch configuration
+       1.Image
+       2.Instance Type
+       3.HDD
+       4.S/G
+       5.Keypair
+       6.TAG
+step4- Auto-Scaling Group
+         min instance value-2
+         desired Instance value-
+         max instance value-20
+
+step5- Scaling Plan
+          1. Dynamic Scaling Plan
+          2. Manual Scaling Plan
+          3. Scheduled Scaling Plan
+
+67. Aws autoscaling lab part1
+.create a instance..connect to instance and configure application
+#yum install httpd
+#cd /var/www/html
+#echo "welcom to aws" > index.html
+#systemctl start httpd
+#systemctl enable httpd
+
+.create image 
+go to action,create image, image name-MY-APPLICATION-IMAGE ..create 
+Now you can delete the instance
+
+.Launch COnfiguration (in AS group)
+create launch configuration
+     choose ami- MY-APPLICATION-IMAGE
+     choose instance type- t2.micro
+     configure details- name-
+.Add storage-  
+.SG- port-http and https
+.review and give key pair
+create 
+
+.AUTO_SCALING GROUP
+      select launch template below
+      Group name- My-application-Asg
+      launch Configuration-
+      group size- Start with 1 instances
+      Network- default VPC
+      Subnet- select all the subnets for high availabilty    
+     next
+.Configure Scaling Policies
+  keep this group at its initial size
+
+next, give Name and value and REVIEW and Create
+
+--Now u can see one instance up and running in ec2 section ..copy public ip and check on browser
+IF U TERMINATE THE INSTANCE ..U CAN see another instance up and running. Thats the beauty of
+ASG.
+
+68. AWS autoscaling LAB2
+
+create a ELB- MY-ELB . and inside that target group- give a name MY-ELB
+
+Now Go to Auto Scaling Group
+  Create ASG - Select my-app-launch-configuration 
+
+.AUTO_SCALING GROUP
+      select launch template below
+      Group name- My-application-Asg
+      launch Configuration-
+      group size- Start with 1 instances
+      Network- default VPC
+      Subnet- select all the subnets for high availabilty    
+     next
+  Advanced Details
+      Load Balacing - tick mark(receive traffic from one or more load balancers)
+      Target Groups- MY-ELB
+  Configure Scaling Policies
+    use scaling policies
+        scale between 1 and  5 instances.
+        INCREASE GROUP SIZE
+              Name- Increase group Size
+              Execute policy when: avg cpu utilization
+                                   >= 70%
+                                   For at least:1consecutive period of 5mins
+                                   Create
+              Take the action: add 1 instance
+
+        DECREASE GROUP SIZE
+              execute policy when: avg cpu utilisation <= 20%
+              REmove 1 instance
+
+next,tag , review , create
+-------
+Now go to Target Groups Select MY-ELB ... u can see an ec2 up and running in deesierd targets
+
+access the instance and increase the load(*oops u cant access because port 22 ss is not in the sg)
+#yes > /dev/null &     (to increase load)
+#top
+u see ec2 increasing
+#killall -p yes (to decrease load)
+u can see ec2 decreasing
+----------------
+For manual scaling go in the asg..scroll right and edit below
+             desired=4 min=4 max=20
+----------------
+For Scheduled scaling..below scheduled actions
+        name= myschedulescaling
+        min=5
+        max=20
+        desired=10
+        recurrence=cron/month/week we select once
+        start time- 2-8-2019   utc-9-27 time
+
+69. AWS Auto Scaling LAB PArt-3
+ASg and target group both are doing health checks. But if target group consider unhealthy
+ELB stops sending traffic to that ec2.but ASG still considering it healthy
+ Target group does smart health check
+as it checks httpd content h/w os everything , but ASG only os and hardware       
+
+In ASG group
+Details=> EDIt => health check type=ELB now save
+
+70. AWS ASG part4
+Activity History- reports
+sscalin policies- u can edit policy here
+instances- action=>standby mode for troubleshooting purposes
+
+edit details, termination policies= default,oldinstance,oldestlaunchConfiguration
+                                     newestinstance,closestest to 
+suspended processes-launch (to stop process whenever abrubtly ec2 increases) 
+
+71.AWS Cloudwatch
+Montoring , Metrics , interval time to send data -5mins.....1min(detailed monitoring paid)
+when cpu utilization is >70 , alarm will be created and a action is it to taken
+                                       action like-SNS (a notification is send to me)
+                                                   autoscaling
+                                                   lambda
+                                                   ansible
+                                                   python
+72. CLoud Watch LAB PART1
+
+Launch one ec2 machine Name-CLoudwatch server, Now below in status checks u can see 2 things
+system status checks  and   Instance Status Checks
+system status checks- checks the hyperviser on which the ec2 deploys
+                          -power is good or not
+                          -network is good or not
+                          -capacity is available or not
+                   solution- If u restart the machine, it will be deployed on another hyperviser
+
+Instance status check- image ,volume,keypair this checks ....
+
+u can put threshold on both this status checks.. and create a alarm and take a action via 
+sns to send you a notification on ur email
+LAB
+.SNS > Topics > create topics
+                  Name-Awscloudwatch and create topic 
+     Subscription > Create Subscription
+                  Topic ARN- ALready there
+                  Protocol- Email
+                  Endpoint- abhinitp2k12@gmail.com
+     Now confirm it from email and then you are good to go actually
+
+Create Status Check ALarm (below the instance=>status checks=>)
+ Send a Notification to: choose sns topic
+                    topic name: awscloudwatch
+
+                Take the action: Stop this instance
+
+                whenever: Status check failed(ANY: instance/system both)
+                For atleast: 2 consecutive periods of:1min                      
+                                                                           Create alarm 
+----
+for testing access the machine and delete booting files
+#cd /boot/
+#rm -rf *
+Now if u reboot it wont get reboot and u will get a notification email 
+
+73. AWS CLOUD WATCH PART2
+now below ec2 click on Monitoring TAb, u can watch metrics after 5mins of machine launch
+If u Enable Detailed Montoring - its not free and it monitors every 1 minute
+
+----------
+Go to cloudwatch Dashboard
+   click on the metrics(left side)
+copy instance id and paste there you can see every detail(in three formats line,stacked area, number) 
+ u can see metrics data upto paste 15months.. for more thAN that u have to use s3
+ u can create a new dashboard and monitor on full screen 
+
+Access the EC2 increase the load and check the cloud watch dashboard
+
+create alarm > select metrics > paste instance Id > slect metrics(cpu utilization)
+               Grapherd metrics > period: 1min
+next...
+Conditions, Threshold >= 60 , next send a notification to: select sns topic
+
+Add a description: cpu util
+---------
+Alarm has three modes - ALArm
+                        INSUFICIENT
+                        ok   
+
+wait for a bit ... cpu util will increase.
+
+74. AWS CLOUD WATCH LAB 3
+
+#free -h (to see ram)
+#df -h to see volumes
+
+cloudwatch script on google
+ -mon-put-instance-data.pl (to send metrics from ec2 to cloudwatch)
+ -mon-get-instance-data.pl (to get the data from cloudwatch to ec2) 
+
+Watch Video once again
+
+75. CLOUDwatch PART4... monitoring apapche logs through cloudwatch
+#yum install httpd
+#cd /var/www/html
+#echo "Welcome to aws" > index.html
+#systemctl start httpd
+#systemctl enable httpd
+hit public ip u can see
+#cd /var/log/httpd (here log files are there)
+#ls
+
+#yum install awslogs* -y
+#systemctl start awslogsd
+#systemctl enable awslogsd   
+#cd /etc/awslogs/ 
+ if u do ll (u can see the files generated)
+   awscli.conf, awslogs.conf,config,proxy.conf
+#vim awscli.conf  
+
+IAm > ROLE > CREATE ROLE > EC2= Cloudwatch LOGS fullaccess > name-xyzrole
+
+EC2 > ACtion > instance setiing > Attach/Replace IAM role > xyzrole
+
+hit public IP 2-3 times
+#systemctl restart awslogsd
+
+Cloudwatch > logs > refresh
+     u can see /var/log/messages
+
+but we need httpd logs
+#vim awslogs.conf
+ [Apachelogs]
+ datetime_format = %b %d %H:%M:%S
+ file = /var/log/httpd/access_log
+ buffer_duration = 5000
+ log_stream_name = APAche-Access-logs{instance_id}
+ initial_position = start_of_file
+ log_group_name = Apachelogs
+#systemctl restart awslogsd
+#systemctl httpd restart
+
+cloudwatch > logs > apache logs (to verify)
+
+76. AWS CLOUDWATCH LAB5 EVENTS
+
+when some changes occur create events and on that events we can take actions.
+Events source > Create rule
+                 Event Pattern
+                 sevices name- ec2
+                 event type - all events
+                Targets
+                 SNS topic-topic awscloudwatch
+
+Configure Rule Details
+         Name- myevent
+         state-enabled
+
+Now if u create a volume on ec2 u will get a email notification
+
+77. CLOUD watch LAB PArt-6 
+Threshold on billing
+
+cloudwatch > billing > create alarm > 
+
+
+                  condition - greaterthan equalto 750dollars
+                
+                  then sns topic- awscloudwatch
+
+next > billingalarm > 
+
+
+78. AWS RDS INSTANCE 
+
+free 750-b.t2.micro
+20gb
+20gb backup
+Backup process Management
+Hardware maintainace
+
+1.Mariadb 2.Oracle 3.Postgresql 4.Amazon Aurora 5.Mysql 6.sql server
+
+three types of RDS instance
+i) single a/z ii) Multi A/Z iii)Read replica RDS Instance
+
+79. AWS RDS Single AZ Deployment-LAB
+
+RDS > create database > engine type- MariaDB
+                        version- u can select as per need
+                        Templates- Free tier
+                                   db.t2.micro
+                        
+                    settings 
+                         name-
+                         credential settings- username=admin passwd=admin123  
+
+                    Allocate storage 20
+                    enable Storage autoscaling- if db is full it scales up
+                    
+                    connectivity- Give subnet and vpc and all
+
+                    Public Access - yes (as to see now for practical purpose)
+
+                    choose SG
+                         DB PORT-3306
+
+                    Backup - enable automatic backup
+                             backup retention period -35days
+                             backup window - give time/no preference (when backup should perform)
+                    monitoring- enable enhanced monitoring
+                    Log exports- audit log
+                                 Error log
+                                 General Log
+                                 Slow query Log
+
+                     MAintainance- Enable auto minor version upgrade
+                     maintinance window- You can select time when to do the maintainance
+                     deleting protection- enable so that no one can delete it
+
+Create db
+------
+select the endpoint and access it from the ec2 linux machine
+#yum install mariadb*
+#mysql -u admin -p -h database-1khflefihlfENDPOINTuCOPIED
+ passwd1:
+
+ >show databases
+ >create database india
+
+80. AWS-RDS MULTI AZ READ REPLICA DDEployment
+first create subnet group with 2 subnets subnet1 subnet2 with different az
+
+RDS > subnet groups > create DB subnet group
+                         name-
+                         vpc-
+                         subnet-us-east-1a .......add
+             then again  subnet us-east-1b .......add
+
+subnet groups with 2 az ..........................create
+
+Databases-Create database
+           engine- mariaDB
+           template- select production/devtest (free tier wont give multiaz)
+           everything is same like before just 
+
+           MULti-AZ deployment-
+                 create a standby instance
+
+           subnet group- dbsubnet group
+---------------------
+go to database > actions > create read replica
+                                   u can select different region also
+
+u can only read and do query kind of stuff
+
+81. AWS ROUTE 53
+Domain registration - u register a name from godaddy
+Domain Hosting- to set records u need a hosting
+
+ROUte 53 gives 100% SLA
+and also provides multi routing policy
+ 1.simple routing policy
+ 2.multivalue routing policy
+ 3.weighted routing policy
+ 4.latency routing policy
+ 5.geo location routing policy
+ 6.failover routing policy 
+We make two data centrs one in virginia and other in singapore with respective ec2s connected to elb
+we did both domain registering and hosting on route53
+
+www.sd.com      CNAME    virgnia ELB  simple
+                          singapore   simple
+
+
+multivalue (both will go to the same elb)
+
+www.sd.com      CNAME      viginiaELB
+admin.sd.com    CNAME      viginiaELB
+
+weighted (if 4 person hits the 3 will go to virgnia n 1 will go to singapore)
+www.sd.com      CNAME      viginiaELB    weighted 75%
+www.sd.com      CNAME      singaporeELB  weighted 25%
+
+latency () if someone hits from delhi...traffic goes to near ones ..it checks latency
+www.sd.com      CNAME      viginiaELB   latency
+www.sd.com      CNAME      singapore    Latency
+
+geo;ocation (if coming from usa ot will to virgnia)
+www.sd.com      CNAME      viginiaELB    Geolocation   
+
+failover (whenever primary fails redirect it to secondary one)
+www.sd.com      CNAME      viginiaELB  failover primary 
+www.sd.com      CNAME      SINGApore  failover secondary
+
+82. AWS route53 lAB
+
+route53 > registerdomain > u can search here(www.gkd.com > add to cart > buy n register
+
+automatically it will create hosted zones (otherwise u have to replace the nameservers on godaddy)
+
+create record set >      name: [value].sanjaydahiya.com
+                         Type: A,cname,aaaa,mx,ns,soa
+                         Aliases
+                         TTL
+                         Value
+                         Routing POlicy
+
+83. AWS ELAstic Beanstalk
+basically designed for developer. He writes code for website hosting. He needs ec2 lb autoscaling 
+everything. 
+now He dont have to depend on aws administrator. YOU just have to select platform for ur code
+and request resources and aws will provision from him easily. 
+
+84. ELASTIC BEANSTALK LAB
+elastic beanstalk > create new application > Name-sanjaydahiyapp > create
+                                              description-same 
+
+   no environment exist > create one now > webserver environment(pick this)        worker environment
+                                           domain-sanjaydahiyapp
+                                           platform-php
+                                           application code-sample application
+                                     now create environment
+
+after creating everything.. It gives envrionment ID and url= jfakufkfu.beanstalk.com
+hit the link and u can see sample php app.
+
+backend it creates a ec2 where it deploys the phpapp...to access it we have to add a key first
+keypair- Elastic
+
+All applications > sanjaydahiya > sanjaydahiyaapp-env
+                            configuration-security
+                                             ec2keypair-elastic-applyy
+
+--------
+Now run Your own application
+Sanjaydahiyaapp > application version > upload > version lable- version1
+                                                 choose file- education.zip
+
+slect the version > action > deploy
+after deploy .... hit the url given by beanstalk u can see the webpage
+BUT jfakufkfu.beanstalk.com this wont be access ....
+jfakufkfu.beanstalk.com/Education
+To remove this Education  
+ all application > sanjaydahiyapp > sanjaydahiyaap-env > configuration
+                                                            Document root = /education
+
+now put the url and u can web page on browser
+
+you can create a record set on route53 name- alias target- elastic beanstal
+
+85.CLoud FRont DISTRIBUTION 
+cdn- content delivery network
+
+aws has lot of regions right. Suppose in mumbai region u have created a setup.
+ELB ..behind elb there are ec2s  and this ec2s are connected to db. if the clients are from
+india they will access it very fast. But clients from usa or europe will not access the website
+fast. 
+
+Aws gives a solution that cache servers are located in edge locations. So take your setup to next
+level and deploy cdn on loadbalancer. While deploying they will ask for origin, origin can be
+loadbalancer, webserver, s3. Now cloudfront has its own endpoint..
+u go to the route53 and create a record set of
+xyz.cloudfront.com  CNAME   www.sanjaydahiya.com
+
+another point, cloudfront saves the static content on itself and copies on different edge server
+of geolocation. Clients can access static content directly from edge locations. for dinamic 
+he has to come to the setup. U can put web access firewall also.
+
+86. AWS CLOUDFRONT LAB
+
+create an ec2, create an ELB then give a target group name then register the ec2s for elb
+configure apache on ec2..hit elb url on the browser to check
+
+Cloudfront > create distribution > 1. web distribution
+                                   2. RTMP distribution
+
+web distribution > Origin Domain Name: cloudelb-11157.useastl.elb_hostname
+                          origin path:
+                          origin id: elb id
+                        minimum origin ssl protocol
+                        origin protocol policy: http https matchviewer
+                        origin response timeout
+                        origin keep-alive timeout
+                   Distribution Settings:
+                        Price Class:use only us,canada and europe
+                                    use us,cananda,europe,asia,middle east and africa 
+                                    Use ALL edge locations
+
+In distribution settings u can change everything
+    origin n origin groups : u can change origin
+             behaviours:
+             error pages:
+             restrictions: enable geo restriction
+                            whitelist/blacklist
+             countries: Pakistan
+
+87. AWS Workmail
+
+Resources needed: hardware, on top of that OS , on that exchange application(exchange servers)
+thwn we bind domain with exchange. Then we create emails harry@sanjaydahiya.com We have to keep
+backup storage also. If server gets crashed or something u cannpt access email..u get a down
+time.so u create another secondary mail server.
+
+on Aws workmail everything is taken care...bs u get a platform just bind ur domain here and
+do the verification and you are good to go.
+per mail id gets 50gb ka storage
+25 email free for 30days, 1email id $4
+
+88.AWS LAMBDA FUNCTION
+
+suppose 100 ec2 running in nvirgnia with other sservices. 50 ec2s are not required during night
+so stopping it manually is hectic so we need some automation.
+So deploy a function on lamda, it asks which platform also python ruby node.js according 
+to code language. It charges according to the number of second the fuction is running
+
+LAB use aws lambda to start and stop aws ec2!!
+create 2 machines DEV and TEST team......  and IAM role for LAmda=ec2fullaccess
+
+Lambda > Functions > create Function 
+                      Name:awsclass
+                      Runtime: Python
+                      Execution role: awsclassrole
+
+after creating , paste code in lambda_function > save
+
+Now click on Test > configure test event > event name: something   ........ save and test again
+
+
+
+now automate trigger...  sns > create topic > subcription > confirm
+
+Add trigger > sns > selecttopic > create
+
+Now we will set alarm on the cloudwatch on that instance ..
+that when load increases send a email through sns.. as soon as the sns shoots email it triggers
+the lambda function.. and the function runs to stop the ec2
+
+89. Setup Amazon WORKMAIL with a Custom
+Quick setup > Organization name: awsclass2019
+              web application url: https://awsclass2019.awsapps.com/mail
+                                                                             Create
+now click on awsclass2019 > create user >  User name: sanjay
+                                           First name: sajay
+                                           last name: dahiya
+                                           Display name sanjay dahiya             next
+              set up email add and passwd > email address: sanjay @[awsclass2019.awsapps.com]
+                                            password
+                                            repeat passwd
+If u want to set ur own domain then go to Domain > domain name: sanjaydahiya.com > add
+now it will do verification........... configure manually u go in the route53 create record
+set and choose require type. MX , CNAME , TXT
+Copy hostname and value from domain in workmail and paste there.
+
+                                           User name: harry
+                                           First name: harry
+                                           last name: singh
+                                           Display name harry singh             next
+              set up email add and passwd > email address: harry@[sanjaydahiya.com]
+                                            password
+                                            repeat passwd
+
+organization setting > Web Application > lets login here
+
+90.How to Design Three tier Application Architecture
+
+92.
+
+9.
+
+100.How to migrate on premises vm to aws
+      1.Download AWS CLI
+      2.INSTALL AWS CLI
+      3. GET ACCESS KEYS TO CONFIGURE AWS CLI
+      4.TEST YOUR ACCESS
+      5 CREATE ROLE NAME should be vmimport with relevant permission
+(create a file trust-policy.json on desktop and copy json code in it)
+    cd desktop
+    aws iam create-role --role-name vmimport --assume-role-policy-document "file://trust-policy.json"
+      6 export the virtual machine
+    File > export vm to OVF/vmdk
+      7 create bucket and upload image in side s3 bucket
+      8 import the virtual machine
+   (create a file container.json and paste the code in it)   
+
+also add permission to the role u created VMimportExportfullaccess and administratoraccess
+      9 access the virtual machine
+      10 test
+
+    aws ec2 import-image --description "on-premises-Redhat-VM" --disk-containers "file://containers.json"
+    aws ec2 describe-import-tasks --import-task-ids import-ami-abcd1234
+
+101
+
+
+102. Cloud formation lab
+
+{
+"Resources":{
+"FirstEC2Instance": {
+"Type":"AWS:EC2::Instance",
+"Properties": {
+"ImageId": "ami-0egagrargag"
+}
+}
+}
+
+}
+
+save on notepad
+
+IAM role > cloudformation=Aadministrator access
+
+Cloudformation > create stack(with new resources) > template is ready
+                                                  >specify template - upload file
+                       > stack name = cloudknowledge            next
+                       > TAgs Name= cloudknowledge
+                       > iam role = cloudformation
+                                                  next > create stack
+
+check instance for verification
+
+delete the stack to deprovision 
+
+103.CLOUD FORMATION LAB2
+
+add some more parameters in the code from below. upload the code and create the stack
+
+If boss says that we need ec2 in different region. Then change the region on console
+and run the code but in code change image id and availability zone subnet security group
+
+104. CLOUD FORMATION PART4
+u created a template, u uploaded the code and created a stack now u remeber that u have 
+to make changes in some resources. So u can do it by changing the values in the code
+and UPDATING the stack. thats what we are seeing here
+
+stack > select stack > update > replace current template > upload a current file > iam policy
+                                                                              > update stack
+
+to save the stack from getting deleted > stack options > edit termiation protection > enable
+
+105. Create s3 bucket through cloud formation.
+{
+"Resources": {
+"cloudknowledgebucket" {
+"Type" : "AWS::S3::Bucket",
+"Properties": {
+   "BucketName": "cloudknowledgeindia2025",
+     "Tags": [
+       {
+     "Key": "Name",
+     "Value": "cloudknowledge"
+}
+]
+}
+}
+}
+}
+
+now create a stack 
+
+creating a vpc with cloud formation template, 
+{
+"AWSTemplateFormatVersion": "2010-09-09",
+"Resources": {
+"DevVPC" {
+"Type" : "AWS::EC2::VPC",
+"Properties": {
+   "CidrBlock": "10.100.0.0/16",
+     "EnableDnsHostnames": "false",
+      "EnableDnsSupport": "false"
+      "InstanceTenancy": "dedicated",
+      "Tags": [
+       {
+     "Key": "Name",
+     "Value": "Dev-VPC"
+}
+]
+}
+}
+}
+}
+
+create a stack , upload the template , attach role , create
+
+106. AWS Cloud Formation Part-6
+one template with number of resources
+
+{
+"AWSTemplateFormatVersion": "2010-09-09",
+"Description": "Create my first vpc,subnet & instance",
+"Resources": {
+"ProdVPC": {
+ "Type": "AWS::EC2::VPC",
+ "Properties": { 
+  "CidrBlock": "10.100.0.0/16"
+}
+},
+"Websubnet": {
+"Type": "AWS::EC2::Subnet",
+"Properties": {
+ "VpcID": {
+    "Ref": "ProdVPC" 
+},
+ "CidrBlock": "10.100.0.0./24"
+}
+},
+"Dbsubnet": {
+"Type": "AWS::EC2::Subnet",
+"Properties": {
+ "VpcId": {
+    "Ref": "ProdVPC" 
+},
+ "CidrBlock": "10.100.1.0./24"
+}
+},
+"WebServer": {
+"Type": "AWS::EC2::Instance",
+"properties": {
+"ImageId": "ami-35df4fndghjf",
+"SubnetId": {
+     "Ref": "Websubnet"
+},
+"InstanceType": "t2.micro",
+"KeyName": "CentOs-Server",
+"Tags": [
+{
+"Key": "Name",
+"Value": "Web-server"
+}
+]
+}
+}
+}
+}
+
+107. ANSIBLE AWS EC2 INSTANCE CREATION USING ANSIBLE PART1
+#YUM INSTALL ANSIBLE
+#yum makecache
+#yum install epel-release
+#yum makecache
+#yum install python-pip
+#pip install boto
+#pip install --upgrade pip
+now writing playbook
+#vim aws.yml
+ - hosts: localhost
+   tasks: 
+    - ec2:
+       aws_access_key: AJOIDOIH646SDSDFF6
+       aws_secret_key: FHLAKASDJIHALKDJIUFHOPSDSPOJC
+       key_name: ansible-key
+       group: ansible-sg
+       instance_type: t2.micro
+       image: ami-042519c83e2a7a5
+       wait: yes
+       wait_timeout: 500
+       count: 1
+       instance_tags: 
+         Name: Prod-Instance
+       monitoring: yes
+       region: ap-south-1
+       vpc_subnet_id: subnet-01c21c7a
+       assign_public_ip: yes
+#vim /etc/ansible/hosts
+[localhost]
+localhost
+
+#ssh-keygen
+#ssh-copy-id -i root@localhost
+
+set passwd to root 
+
+#ansible-playbook aws.yml
+
+now to stop ec2 instance
+#vim stopaws.yml
+ -hosts: localhost
+  tasks:
+   - ec2:
+      aws_access_keys: sdhfksjkfsljljflefj
+      aws_secret_keys: wdfkalfjlfsllla
+      instance_ids: i-sfkaela
+      region: ap-south-1
+      state: stopped
+      wait: True
+      vpc_subnet_id: subnet-sfrgijr
+      assign_public_ip: yes
+#ansible-playbook stopaws.yml
+#vim stopaws.yml.. for running ec2
+ state: running 
+
+for terminate
+state: absent
+
+#ansible-doc ec2
+
+108. ANSIBLE AWS EC2 INSTANCE CREATION USING ANSIBLE PART2
+
+109. 
+
+create ec2 instance through ansible on google and read doc on ansible
+
+110. ANSIBLE AWS EBS VOLUME CREATION
+#vim vol.yml
+ - hosts: all
+   tasks:
+    - ec2_vol:
+         aws_access_keys: sdhfksjkfsljljflefj
+         aws_secret_keys: wdfkalfjlfsllla
+         volume_size: 10
+         device_name: /dev/xvdb
+         volume_type: io1
+         iops: 100
+         zone: ap-south-1b
+         region: ap-south-1
+         tags:
+            Name: Prod-Volume
+#ansible-playbook vol.yml
+now attaching this volume to the ec2...first create a ec2
+#ansible-playbook aws.yml
+
+#vim attach.yml
+- hosts: all
+  tasks:
+    - ec2_vol:
+         aws_access_keys: sdhfksjkfsljljflefj
+         aws_secret_keys: wdfkalfjlfsllla
+         instance: i-fhkakjdkafl
+         id: vol-afjahbkjnlzkc
+         device_name: /dev/xvdb
+         zone: ap-south-1b
+         region: ap-south-1
+         delete_on_termination: yes
+
+#vim detach.yml
+- hosts: all
+  tasks:
+    - ec2_vol:
+         aws_access_keys: sdhfksjkfsljljflefj
+         aws_secret_keys: wdfkalfjlfsllla
+         id: vol-afjahbkjnlzkc
+         instance: None
+         zone: ap-south-1b
+         region: ap-south-1
+
+For deleteing the volume
+#vim deleting.yml
+- hosts: all
+  tasks:
+    - ec2_vol:
+         aws_access_keys: sdhfksjkfsljljflefj
+         aws_secret_keys: wdfkalfjlfsllla
+         id: vol-afjahbkjnlzkc
+         state: absent
+         zone: ap-south-1b
+         region: ap-south-1
+
+111. Ansible AWS EBS Snapshot Creation through ANSIBLE
+#vim volumesnap.yml
+- hosts: all
+  tasks:
+    - ec2_snapshot:
+         aws_access_keys: sdhfksjkfsljljflefj
+         aws_secret_keys: wdfkalfjlfsllla
+         volume_id: vol-afjahbkjnlzkc
+         region: ap-south-1
+         description: This is my first EBS VOL SNAPSJHOT
+#ansible-playbook snap.yml
+
+snapshot copy to other region
+
+#vim snapcopy.yml
+- hosts: all
+  tasks:
+    - ec2_snapshot_copy:
+         aws_access_keys: sdhfksjkfsljljflefj
+         aws_secret_keys: wdfkalfjlfsllla
+         source_region: ap-south-1
+         region: us-east-1
+         source_snapshot_id: snap-jfai21kjbfalkja
+         tags:
+           Name: N-Virginia
+         encrypted: yes
+##vim snapdelete.yml
+- hosts: all
+  tasks:
+    - local_action:
+         aws_access_keys: sdhfksjkfsljljflefj
+         aws_secret_keys: wdfkalfjlfsllla
+         module: ec2_snapshot
+         snapshot_id: snap-akfjbak
+         state: absent
+         region: ap-south-1
+
+112. ANSIBLE AWS VPC CREATE USING ANSIBLE
+#vim vpc.yml
+- hosts: all
+  tasks:
+    - ec2_vpc:
+         aws_access_keys: sdhfksjkfsljljflefj
+         aws_secret_keys: wdfkalfjlfsllla
+         state: present
+         cidr_block: 172.22.0.0/16
+         region: us-east-1
+         resource_tags:
+           Name: Production-VPC
+         subnets:
+           - cidr: 172.22.1.0/24
+             az: us-east-1a
+             resource_tags:
+                  Name: Web-subnet
+           - cidr: 172.22.2.0/24
+             az: us-east-1a
+             resource_tags:
+                  Name: DB-subnet
+           - cidr: 172.22.3.0/24
+             az: us-east-1a
+             resource_tags:
+                  Name: Jump-Subnet
+         internet_gateway: True
+         route_tables:
+               - subnets:
+                   - 172.22.1.0/24
+                   - 172.22.2.0/24
+                   - 172.22.3.0/24
+                 routes:
+                    - dest: 0.0.0.0/0
+                      gw: igw
+                 resource_tags:
+                     Name: production-Route_table

@@ -1,0 +1,1111 @@
+11. ansible lab setup
+launch 3 machines, master and 2 worker
+
+#yum install package (on all three nodes)
+#ansible --version
+#vim /etc/ansible/ansible_cfg (details written here)
+#vim /etc/ansible/hosts( innventory file)
+  455.856.555.888
+  646.555.534.333 (entre ip of nodes)
+ :wq!
+to mention in group 
+ [web-server]
+ 455.856.555.888
+ 646.555.534.333
+#ansible all --list-hosts (check all nodes)
+#ansible web-server --list-hosts
+#ansible all --list-hosts -i myinventory/abc
+  ( mkdir myinventory
+    vim abc and entre ips of nodes)
+or change the path in /etc/ansible/ansible_cfg
+
+2. Normal user
+#useradd harry
+#useradd natasha
+#useradd sarah
+#passwd harry
+as normal user cant write the confg file, you have to create 
+your own inventry directory and add ips to a file "abc"
+root user will give access normal user to cfg file
+        #setfacl -m u:harry:rwx /etc/ansible/ansible.cfg
+now harry can edit
+#vim /etc/ansible/ansible.cfg 
+  inventory=/home/harry/myinventory/abc
+:wq!
+#ansible webserver --list-hosts (it will work)
+
+but two normal user cant use the same configuration file
+so harry copy the configuration file into myinventory
+#cp /etc/ansible/ansible.cfg myinventory/
+#ansible --version ( it will show 
+config file = /etc/ansible/ansible.cfg)
+so to change this 
+#export ANSIBLE_CONFIG=/home/harry/myinventory/ansible.cfg
+#ansible --version (now it will read the config new path)
+now edit the ansible.cfg to set your own inventory details
+#vim ansible.cfg
+  inventory=/home/harry/myinventory/abc
+:wq!
+#ansible web --list-hosts (no need to entre the path)
+
+to make the export path permanent enter into .bashrc 
+#vim .bashrc/
+  export ANSIBLE_CONFIG=/home/harry/myinventory/ansible.cfg
+!wq
+ 
+
+now without setting environment variables
+#cp /etc/ansible/ansible.cfg . (copy in ur home account)
+#ansible --version (automatically it will show the path)
+#mkdir myinventory
+#cd myinventory
+#vim abcd (mention ips)
+#vim ansible.cfg (change inventory path)
+ /home/sarah/myinventory/abcd
+#ansible all --list-hosts
+
+3.Ansible commands and raw module
+check ping ips and install ansible on 3 machines
+#ansible --version
+#vim /etc/ansible/ansible.cfg (use default inventory path)
+#vim /etc/ansible/host
+  [web]
+  454.555.511.156
+  546.222.333.455
+:wq!
+#ansible web --list-hosts
+#ansible web -m command -a "uptime"
+  it will ask "yes"for key fingerprint..to remove that
+#vim /etc/ansible/ansible.cfg
+  se nu
+  /host key
+  uncomment #host_key_checking = false
+:wq!
+#ansible web -m command -a "uptime" -k (to bypass key n prompt passwd)
+#ansible web -m raw -a "ls;date;uptime" -k (multiple commands)
+#ssh-keygen (passwd less)
+#ssh-copy-id -i root@192.168.183.252
+simlarly for node2
+now without key the task will run
+#ansible web -m command -a "uptime" (works!)
+4. Ansible copy modules
+#ansible-doc -l (module details)
+#ansible-doc copy (details about copy module)
+#ansible all -m copy -a "src=/etc/passwd des=/tmp"
+#ansible all -m copy -a "src=/etc/passwd des=/tmp owner=aws group=azure mode=777"
+#ansible all -m copy -a "src=/etc/passwd des=/tmp owner=aws group=azure mode=777 backup=yes"
+so as to undo the appended changes
+
+#ansible all -m copy -a "content='welcometoaws' des=/tmp/newfile.txt"
+
+5. Fetch module
+#ansible-doc fetch
+#ansible all -m fetch -a 'src=var/log/yum.log dest=/logs' 
+it will bring files from nodes to master
+
+6. File module
+#ansible all -m file -a 'path=/tmp/india state=directory'
+(create a directory on node /tmp/india)
+#ansible all -m file -a 'path=/tmp/delhi state=touch'
+(create file delhi)
+#ansible all -m file -a 'path=/tmp/delhi mode=777'
+#ansible all -m file -a 'path=/tmp/delhi state=absent' (to remove)
+#ansible all -m file -a 'src=/etc/passwd dest=/tmp/newlink state=link'
+
+7.Shell module
+#ansible-doc shell
+#vim myscipt.sh
+  #! /bin/bash
+  echo "welcome to india"
+  mkdir /tmp/cloud-knowledge
+  cd /tmp/cloud-knowledge
+  touch abc
+  cp -rvfn /etc/* /tmp/cloud-knowledge
+:wq!                    
+#ansible all -m copy -a 'src=/root/myscript.sh dest/tmp' (copy to nodes)
+#ansible all -m shell -a 'sh /tmp/myscript.sh' (run in master)
+
+8. Package module
+#ansible-doc package
+#ansible all -m package -a 'name=httpd state=present' (install)
+#ansible all -m package -a 'name=httpd state=absent'  (remove)
+#ansible all -m package -a 'name=samba* state=latest use=yum'
+
+#ansible all -m yum -a 'name=httpd enablerepo=newrepo state=present'
+#ansible all -m yum -a 'list=httpd'
+9.yum repository module
+#ansible-doc -l | grep yum
+yum
+yum_repository
+#ansible-doc yum_repository (open documentation)
+#ansible all -m yum_repository -a 'name=yum-server description="this is my first yum server" file=my_yum_server
+ baseurl=https://download...... gpgcheck=no enabled=yes'
+#yum repolist(on node to verify new repository)
+#ansible all -m yum_repository -a 'name=yum-server state=absent file=my_yum_server'
+to remove repository
+
+10. service module
+#ansible-doc service
+#ansible all -m -service -a 'name=httpd state=started'
+stopped to stop, reloaded to reload, restarted to restart
+
+11. user and group module
+#ansible-doc group
+#ansible all -m group -a 'name=wipro state=present'
+#ansible-doc user
+#ansible all -m user -a 'name=natasha comment="natasha it admin" uid=1010 group=wipro'
+#id natasha on node to verfy
+#ansible all -m user -a 'name=natasha shell=/sbin/nologin groups=wipro,tcs append=yes'
+#ansible all -m user -a 'name=natsha state=absent remove=yes'
+
+12. lineinfile module 
+#to write lines inside file of worker nodes
+#ansible all -m lineinfile -a 'path=/etc/sudoers line="sanjay ALL=(ALL) ALL"'
+#ansible all -m lineinfile -a 'path=/etc/sudoers line="sanjay ALL=(ALL) ALL" state=absent'
+#ansible all -m lineinfile -a 'path=/etc/sudoers line="sanjay ALL=(ALL) ALL" insertafter=BOF'
+BOF means beginning of the file EOF end of the file
+
+#ansible all -m lineinfile -a 'path=/etc/sudoers line="sanjay ALL=(ALL) ALL" insertafter="^root"'
+insert parameter after root line
+#ansible all -m lineinfile -a 'path=/etc/sudoers line="sanjay ALL=(ALL) ALL" regexp="^root"'
+regexp for replacing the particular line
+#ansible all -m lineinfile -a 'path=/etc/sudoers regexp="^%wheel" state=absent'
+to remove the particular line
+
+vim /etc/selinux/config to remove selinux=enforcing from this file
+#ansible all -m lineinfile -a 'path=/etc/selinux/config regexp="^SELINUX=" line="SELINUX=disabled"'
+
+13. Playbook (Yaml/json)
+    single line formate
+    multiline format
+    dictionary format
+#vim myplaybook.yml
+ -hosts: all
+  tasks: 
+    -copy:
+       src: /etc/passwd
+       dest: /tmp/
+       owner: kubernetes
+       group: kubernetes
+       mode: 777
+:wq!
+#ansible-playbook myplaybook.yml (run the playbook)
+
+#vim myplaybook.yml
+ - hosts: all
+   tasks: 
+    - copy:
+        src: /etc/passwd
+        dest: /tmp/
+        owner: kubernetes
+        group: kubernetes
+        mode: 777
+
+    - file:
+        path: /tmp/ansible
+        state: directory
+
+    - yum:
+        name: httpd
+        state: latest
+
+    - service:
+        name: httpd
+        state: started
+:wq!
+#ansible-playbook myplaybook.yml   ............dictionary method
+
+14. singleline playbook
+#vim singleline.yml
+ - hosts: all
+   tasks:
+    - copy: src=/etc/group dest=/tmp owner=kubernetes group=kubernetes mode=777
+    - file: path=/tmp/aws state=directory
+    - yum: name=tree state=latest
+    - service: name=httpd state=restarted
+:wq!
+#ansible-playbook singleline.yml
+
+15. multiline playbook
+#vim multiline.yml
+ - hosts: all
+   tasks:
+    - copy: src=/etc/shadow
+            dest=/tmp
+            owner=kubernetes
+            group=kubernetes
+            mode=777
+
+    - file: path=/tmp/azure
+            state=directory
+
+    - yum: name=nfs-utils
+           state=latest
+
+    - service: name=nfs-server
+               state=started
+
+16. one playbook but running in multiple nodes
+
+#vim myplaybook.yml
+ - hosts: web
+   tasks: 
+    - copy:
+        src: /etc/passwd
+        dest: /tmp/
+        owner: kubernetes
+        group: kubernetes
+        mode: 777
+
+    - file:
+        path: /tmp/ansible
+        state: directory
+- hosts: app
+  tasks:
+    - yum:
+        name: httpd
+        state: latest
+
+    - service:
+        name: httpd
+        state: started
+:wq!
+#ansible-playbook myplaybook.yml
+
+name to pass a message
+
+-  name: This is my webserver grp machine
+   hosts: web
+   tasks: 
+    - name: this task is going to copy passwd file to tmp directory
+      copy:
+        src: /etc/passwd
+        dest: /tmp/
+        owner: kubernetes
+        group: kubernetes
+        mode: 777
+17. create tasks for different nodes but calling it through a playbook
+#vim task1.yml
+ - name: this is going to copy passwd in tmp
+   tasks: 
+    - copy:
+        src: /etc/passwd
+        dest: /tmp/
+        owner: kubernetes
+        group: kubernetes
+        mode: 777
+:wq!
+#vim playbook.yml
+ - name: This is my web server group machine
+   hosts: web
+   tasks:
+     - import_tasks: task1.yml
+:wq!
+
+or 
+- name: this is my web server group machine
+  hosts: all
+  tasks:
+    - import_tasks: task1.yml
+    - import_tasks: task2.yml
+
+18. apache configure via ansible
+
+sample website download on google 
+#mkdir /sourcecode
+#cd /sourcecode
+#wget https://pastethelink
+#unzip runner-onepagae.zip
+#rm -rf runner-onepage.zip
+#cp -rf runner-onepage-html/* .
+#ls (u'll get assests css index.html runner-onepage-html)
+#rm -rf runner-onepage.html
+#vim index.html(u can check the html code)
+
+now creating playbook
+#vim webserver.yml
+- hosts: all
+  tasks:
+    - yum:
+        name: httpd
+        state: latest
+
+    - copy:
+        src: /sourcecode/
+        dest: /var/www/html
+
+    - lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen'
+        insertafter: '^#Listen'
+        line: 'Listen 8080'
+
+    - firewalld:
+        port: 8080/tcp
+        permanent: true
+        state: enabled
+        immediate: true
+    - service:
+        name: httpd
+        service: started
+:wq!
+
+19. variables1
+#vim variable.yml
+ - hosts: all
+   vars:
+     mydir: /tmp/cloudknowledge
+     myfile: /etc/passwd
+     mypkg:
+        - httpd
+        - nfs-utils
+        - tree
+        - samba
+   tasks:
+      - file:
+         path: "{{ mydir }}"
+         state: directory
+      - copy:
+         src: "{{ myfile}}"
+         dest: "{{ mydir }}"
+         owner: kubernetes
+         group: kubernetes
+         mode: 777 
+      - yum:
+         name: "{{ mypkg }}"
+         state: latest
+:wq!
+#ansible-playbook variable.yml
+
+20. we can place variables at diff place n call them at playbook
+#mkdir /myvariables
+#cd /myvariables
+#vim var.yml
+ mydir: /tmp/cloudknowledge1
+ myfile: /etc/fstab
+ mypkg: 
+   - httpd
+   - nfs-utils
+   - tree
+   - samba
+#vim variable.yml
+ - hosts: all
+   vars files:
+    - /myvariables/var.yml
+   tasks:
+      - file:
+         path: "{{ mydir }}"
+         state: directory
+      - copy:
+         src: "{{ myfile}}"
+         dest: "{{ mydir }}"
+         owner: kubernetes
+         group: kubernetes
+         mode: 777 
+      - yum:
+         name: "{{ mypkg }}"
+         state: latest
+:wq!
+#ansible-playbook variable.yml
+
+21. variable calling through terminal
+remove the vars/vars_file from variable.yml
+#ansible-playbook variable.yml -e mydir=/tmp/cloudknowledge -e myfile=/etc/passwd -e mypkg=httpd,samba,tree
+
+first priority terminal
+second priority vars_file
+third priority manual vars
+
+22. adding variables in inventory
+#vim /etc/ansible/hosts
+ [web]
+ 192.168.183.131 mydir=/tmp/india myfile=/etc/passwd mypkg=httpd,nfs-utils,samba,tree
+ 192.168.183.140 mydir=/tmp/delhi myfile=/etc/group mypkg=httpd,nfs-utils,samba,tree
+
+:wq!
+
+#vim myplaybook.yml
+- hosts: all
+   tasks:
+      - name: "this task going to create directory name of {{ mydir }} done"
+        file:
+         path: "{{ mydir }}"
+         state: directory
+      - name: "this task going to copy from {{ nyfile }} into {{ mydir }} "
+        copy:
+         src: "{{ myfile}}"
+         dest: "{{ mydir }}"
+         owner: kubernetes
+         group: kubernetes
+         mode: 777 
+      - yum:
+         name: "{{ mypkg }}"
+         state: latest
+
+#ansible-playbook myplaybook.yml
+===============================================================
+defineing variables according to group
+#vim /etc/ansible/hosts
+ [web]
+ 192.168.183.131 
+
+ [app]
+ 192.168.183.140
+
+ [web:vars]
+ mydir=/tmp/cloudknowledge 
+ myfile=/etc/passwd 
+ mypkg=httpd,nfs-utils,samba,tree
+
+ [app:vars]
+ mydir=/tmp/cloudknowledge1 
+ myfile=/etc/shadow
+ mypkg=httpd,nfs-utils,samba,tree
+
+rest same as abvove
+...... betweeen host based variable and group based variable the priority is given to 
+host based variable.
+
+23. suppose there is no ssh keys between worker nodes and master then we can do this thing id passwd 
+authentication
+#ansible-playbook variable.yml -u root -k (k means passwd prompt)
+now removing the passwd 
+#vim /etc/ansibleansible.cfg
+ask_pass = True
+remote_user= root (uncomment this two line)
+#ansible-playbook variable.yml (now it will ask pass without -u -k)
+
+another method
+#vim /etc/ansible/hosts (go in inventory file)
+ [web]
+ 192.168.183.131 ansible_ssh_user=root ansible_ssh_pass=redhat ansible_ssh_port=22
+
+ [app]
+ 192.168.183.140
+
+24. loop concept
+#vim loop.yml
+- hosts: all
+  tasks:
+   - copy:
+      src: "{{ item }}"
+      dest: /tmp
+     with_items:
+       - /etc/passwd
+       - /etc/group
+       - /etc/shadow
+       - /etc/gshadow
+:wq!
+#ansible-playbook loop.yml
+
+25. loop 2
+
+#vim loop.yml
+- hosts: all
+  tasks:
+   - copy:
+      src: "{{ item }}"
+      dest: /tmp
+     with_items:
+       - /etc/passwd
+       - /etc/group
+       - /etc/shadow
+       - /etc/gshadow
+   
+   - file:
+       path: "{{ item }}"
+       state: directory
+     with_items:
+       - /tmp/cloudknowledge-1
+       - /tmp/cloudknowledge-2
+       - /tmp/cloudknowledge-3
+
+   - copy:
+       src: /etc/passwd
+       dest: "{{ item }}" 
+     with_items:
+       - /tmp/cloudknowledge-1
+       - /tmp/cloudknowledge-2
+       - /tmp/cloudknowledge-3
+:wq!
+#ansible-playbook loop.yml
+
+26. loop3 (defining custom variables n calling the playbook)
+
+#vi loop.yml
+- hosts: all
+  vars:
+   mydir:
+    - /tmp/cloudknowledge-1
+    - /tmp/cloudknowledge-2
+    - /tmp/cloudknowledge-3
+
+   myfile:
+    - /etc/passwd
+    - /etc/group
+    - /etc/shadow
+    - /etc/gshadow
+   tasks:
+    - copy:
+       src: "{{ item }}"
+       dest: /tmp
+      with_items:
+       - "{{ myfile }}"
+
+    - file:
+       path: "{{ item }}"
+       state: directory
+      with_items:
+        - "{{ mydir }}"
+    - copy:
+       src: /etc/passwd
+       dest: "{{ item }}"
+      with_items:
+        - "{{ mydir }}"
+:wq!
+#
+
+or u can write like this no need of hifen
+ tasks
+  - copy:
+     src: "{{ item }}"
+     dest: /tmp
+    with_items: "{{ myfile }}"
+#ansible-playbook loop.yml
+
+27. Loop part4 (package calling)
+#vi loop1.yml
+
+- hosts: all
+  tasks:
+   - yum:
+      name: "{{ item }}"
+      state: installed
+     with_items
+      - ftp
+      - httpd
+      - vsftpd
+      - nfs-utils
+#ansible-playbook loop1.yml
+#vi loo2.yml (while using yum u dont need loop)
+- hosts: all
+  tasks:
+   - yum:
+      name:
+       - ftp
+       - httpd
+       - vsftpd
+       - nfs-utils
+      state: installed
+
+28. NESTED LOOP
+ #vi simpleloop.yml
+- hosts: all
+  tasks:
+   - copy:
+      src: "{{ item }}"
+      dest: /tmp
+     with_items:
+      - /etc/passwd
+#ansible-playbbok simple.yml
+
+#vim nestedloop.yml
+- hosts: all
+  tasks:
+   - copy:
+       src: "{{ item[0] }}"
+       dest: "{{ item[1] }}"
+     with_nested:
+       - /etc/passwd
+       - /tmp
+#ansible-playbook nestedloop.yml
+
+#vim nestedloop.yml
+- hosts: all
+  tasks:
+   - copy:
+       src: "{{ item[0] }}"
+       dest: "{{ item[1] }}"
+     with_nested:
+       - [ '/etc/passwd','/etc/group','/etc/gshadow' ]
+       - [ '/tmp','/mnt','/opt' ]
+#ansible-playbook  nestedloop.yml
+
+now with variables
+#vim nestedloop.yml
+- hosts: all
+  vars:
+   myfile:
+    - /etc/passwd
+    - /etc/group
+    - /etc/gshadow
+
+   mydir:
+    - /tmp
+    - /opt
+    - /mnt
+  tasks:
+   - copy:
+       src: "{{ item[0] }}"
+       dest: "{{ item[1] }}"
+     with_nested:
+       - "{{ myfile }}"
+       - "{{ mydir }}"
+:wq!
+====================
+- hosts: all
+  vars:
+   myfile:
+    - /etc/passwd
+    - /etc/group
+    - /etc/gshadow
+  tasks:
+    - copy:
+       src: "{{ myfile }}"
+       dest: "{{ item }}"
+      with_items:
+        - /tmp
+        - /opt
+        - /mnt             {this will not work}
+
+- hosts: all
+  vars:
+   myfile:
+    - /etc/passwd
+    - /etc/group
+    - /etc/gshadow
+  tasks:
+    - copy:
+       src: "{{ myfile[0] }}"
+       dest: "{{ item[1] }}"
+      with_nested:
+        - /tmp
+        - /opt
+        - /mnt  
+
+29. HASH LOOP
+#vim simple.yml
+- hosts: all
+  tasks:
+   - copy:
+       src: "{{ item }}"
+       dest: /tmp
+     with_items:
+       - /etc/passwd
+       - /etc/group
+       - /etc/shadow
+#vim  hash.yml
+- hosts: all
+  tasks: 
+   - copy:
+       src: "{{ item.a }}"
+       dest: "{{ item.b }}"
+     with_items:
+       - { a: '/etc/passwd', b: '/tmp' }
+       - { a: '/etc/group', b: '/opt' } 
+       - { a: '/etc/shadow', b: '/mnt' } 
+=======================================
+1 harry = dev-grp
+ natasha = test-grp
+ sarah = prod-grp     
+
+in worker node add 3 groups
+#groupadd dev-grp
+#groupadd test-grp
+#groupadd prod-grp
+
+now in master node
+#vim hash1.yml
+- hosts: all
+  tasks: 
+   - user:
+       name: "{{ item.user }}"
+       state: present
+       groups: "{{ item.group }}"
+     with_items:
+       - { user: 'harry', group: 'dev-grp' }
+       - { user: 'natasha', group: 'test-grp' } 
+       - { user: 'sarah', group: 'prod-grp' }
+#ansible-playbook hash1.yml
+
+30. ANSIBLE FACTS
+the facts are stored in the worker in the form of variable and values.
+Setup module is present in playbook by default. It uses it to gather facts
+
+#ansible all -m setup 
+#ansible all -m setup --tree /tmp/worker-1 (it will bring the facts and save it in the worker1 file)
+#ansible all -m setup -a 'filter=ansible_all_ipv4_addresses' (it will only show ip)
+#ansible all -m setup -a 'filter=ansible_bios_version' (fiter variables to get value)
+#ansible all -m setup -a 'filter=ansible_mounts' | grep -i device
+creating custom facts on worker
+mkdir -p /etc/ansible/facts.d
+#cd /etc/ansible/facts.d
+#vim worker-node-1.fact
+[worker-node-1]
+apache = 4.5.6
+kernel = 3.2
+disk = 10GB
+RAM = 32GB
+
+now from master
+#ansible all -m setup -a 'filter=ansible_local'
+#ansible all -m setup -a 'filter=ansible_local' | grep -i kernel
+(to get facts about kernel only)
+
+gather_facts= false (to stop gathering facts default when runnning playbook)
+place it betweeen hosts and tasks
+
+31. ANSIBLE CONDITION STATEMENT
+ 2nodes: ubuntu and centos
+ we will playbook in master. if machine is centos then run it. this is the condition
+#vim conditiion.yml
+ -hosts:all
+  tasks:
+   - yum:
+      name:httpd
+      state:installed
+     when: ansible_distribution == "CentOS"
+:wq!
+
+     when: ansible_distribution_major_version == "7"
+if two conditions applied then the playbook will run according to the last condition
+
+when:ansible_distribution != "CentOs"(not equalto means if the condition didint match playbook will run) 
+when:ansible_distribution_major_version < "7"()it will not run the actual one is greater than 7)
+when:ansible_distribution_major_version < "8" (hence it will run coz actual is 7.55513)
+when:ansible_distribution_major_version <= "7" it will run
+when:ansible_distribution_major_version >= "6" it will run
+
+-hosts:all
+  tasks:
+   - yum:
+      name:httpd
+      state:installed
+     when: ansible_distribution_major_version == "7" and ansible_centOs == "CentOS"
+:wq!
+means both conditin should throughly matched
+
+or means either condition shpuld match
+
+
+
+*creating variable for conditioning is by registering it on a new variable. youn can 
+register the path of the file or directory on the new variable. then mention the new
+variable on condition line.
+forexam when this new variable== true then run the playbook
+
+- hosts: all
+  tasks:
+   - stat:
+      path: /etc/cloudknowledge
+     register: cloudknowledgeindia (register the file in new variable)
+
+   - debug: var=cloudknowledgesindia (shows the output of the variable...lots of a attributes under it displays)
+   - copy:
+      content: "welcome to ansible"
+      dest: /etc/cloudknowledge
+     when: cloudknowledgesindia.stat.exists == true
+
+
+
+
+vim the playbook again
+
+- hosts: all
+  gather_facts: false (dont gather facts)
+  tasks:
+   - stat:
+      path: /etc/cloudknowledge
+     register: cloudknowledgeindia (register the file in new variable)
+
+ # - debug: var=cloudknowledgesindia (shows the output of the variable...lots of a attributes under it displays)
+   - copy:                                    (comment the debug line)
+      content: "welcome to ansible"
+      dest: /etc/cloudknowledge
+     when: cloudknowledgesindia.stat.exists == false
+
+   - file:
+      path: /etc/cloudknowledges
+      state: touch
+     when: cloudknowledgeindia.stat.exists == true   the either tasks can run as the condition match
+
+
+
+good level condition advance level
+ - hosts: all
+   tasks:
+    - command: systemctl is-active sshd
+      register: report
+
+    - debug: var=report
+
+    - service:
+        name: httpd
+        state: started
+      when: report.rc == 0
+
+31. notify handler
+
+if any changes happen to the the task module it will generate the notification. and thus
+notification will be like...handler if file state changes do the reboot
+ 
+and if changes occur it will call the handler. and the task in the handler
+will run.
+use case- if something happens in the database config file or state changes... 
+take backup immediately, restore .... this comes under handler
+#vim p1.yml
+- hosts: all
+  tasks:
+   - lineinfile:
+       path: /etc/ssh/sshd_config
+       line: DenyUsers harry natasha
+     notify:
+      - cloudknowledges
+      - cloudindia
+      - clouddelhi
+
+   - copy:
+      src: /etc/passwd
+      dest: /tmp
+
+  handlers:
+     - name: cloudknowledges
+       service:
+         name: sshd
+         state: restarted
+
+     - name: cloudindia
+       yum:
+         name: httpd
+         state: installed
+     
+     - name: clouddelhi
+       command: reboot      (as soon as the sshd conf changes it will call the handler)
+
+32. Ansible Tags
+
+there can be multiple tasks in playbook right. so we assign tags to each tasks. so 
+that we can run tasks according to tags without dissturbing other tasks
+
+#vim p2.yml
+- hosts: all
+  tasks:
+    - copy:
+       src: /etc/passwd
+       dest: /tmp
+      tags: dev-team
+
+    - file:
+       path: /tmp/cloudknowledges
+       state: directory
+      tags: test-team
+
+    - yum:
+       name: httpd
+       state: installed
+      tags: prod-team
+
+    - service:
+        name: httpd
+        state: started
+      tags: admin-team
+:wq!
+#ansible-playbook p2.yml --tags=dev-team
+#ansible-playbook p2.yml --skip-tags=dev-team (run all tasks except devteam)
+
+33.Ansible ignore errors
+if there are 1000 tasks then if the first tasks fails then the rest 999 tasks will not be 
+executed. To eliminate this drawback ignore concept comes in use. it ignores the failed
+one and rest tasks executes as ususal.
+
+- hosts: all
+  tasks:
+   - copy:
+      src: /etc/group1 (this will through error, so use ignore)
+      dest: /tmp
+     ignore_errors: yes
+
+   - file:
+      path: /tmp/cloudknowledges
+      state: directory
+     ignore_errors: yes
+
+   - yum
+      name: httpd
+      state: installed
+     ignore_errors: yes
+  
+   - service:
+      name: httpd
+      state: started
+     ignore_errors: yes
+:wq!
+#ansible-playbook p2.yml
+
+34. Ansible rescue block and always
+vim p1.yml
+
+- hosts: all
+  tasks:
+   - block:
+      - lineinfile:
+              path: /tmp/cloudknowledges.txt
+              line: "Hello India"
+     
+     rescue:
+      - file:
+           path: /tmp/cloudknowledges.txt
+           state: touch
+      - lineinfile:
+           path: /tmp/cloudknowledges.txt
+           line: "hello india"
+     always:
+       - yum:
+           name: httpd
+           state: installed
+
+if tasks doesnot run because of some issue, we can plan rescue for it.
+Always is used for tasks in which we are confident about it that it will run..
+rescue is planned when we are not sure.
+
+35. Ansible Vault
+use case- encryption and decryption
+suppose we want our playbook to be encrypted so that no one can read it.
+as you know play book is written in plain text. fo security we are doing it.
+we can decrpyt it whenever we want as per use
+       
+# vim abc
+ heelo indai
+:wq!
+# ansible-vault encrypt abc
+new vault password:
+confirm new vault password:
+
+#cat abc (u cant read)
+
+#ansible-vault decrypt abc
+give passwd
+#cat abc (u can read)
+
+#ansible-vault view abc (read without decrptying)
+#ansible-vault edit abc (to edit)
+#ansible-vault create india.txt (create encrypted file)
+
+#ansible-vault encrypt p1.yml
+
+u cannt see,edit or run the playbook without decrption
+
+#ansible-playbook p1.yml --ask-vault-pass (play without decrpt)
+#ansible-vault encrypt /etc/ansible/hosts (encrypt inventory file)
+#anible-vault rekey /etc/ansible/hosts (to change passwd)
+
+36. Ansible Roles
+
+#vim /etc/ansible/ansible.cfg
+#cd /etc/ansible
+#ls
+ansible.cfg hosts roles
+#cd roles/
+#ls
+#ansible-galaxy init cloudknowledges
+#ls
+#cd cloudknowledges/
+#ls
+defaults files handlers meta READ.md tasks templates tests vars
+
+there is main.yml in each sections
+#cd tasks (main.yml is already present there)
+# vim main.yml
+- name: Going To Install Apache Package
+  yum:
+   name: "{{ apache_packge }}"
+  
+- name: Going To Start Apache daemon
+  service:
+    name: "{{ apache_daemon }}"
+    state: started
+
+- name: Going to copy SOURCE CODE
+  copy:
+   src: index.html
+   dest: "{{ apache_documentroot }}"
+
+- name: going to apache i firewall role
+  command: firewall-cmd --add-service=http
+
+- name: Going to add apache configuration setting
+  template:
+    src: apache.j2
+    dest: "{{ apache_conf }}"
+  notify: restart_apache
+
+
+
+
+now go to roles and cd cloudknowledges... in there go to vars
+#cd vars (main.yml is already there)
+#vim main.yml
+apache_package: hhtpd
+apache_daemon: httpd
+apache_documentroot: /var/www/html
+apache_conf: /etc/httpd/conf.d/
+:wq!
+
+# cd files
+echo "welcome to ansible" > index.html  
+
+#cd templates
+vim apache.j2
+<Virtualhost {{ ansible_ens33.ipv4.address }}:80>
+ServerName {{ ansible_fqdn }}
+Documentroot {{ apache_documentroot }}
+</Virtualhost>
+:wq!
+
+#cd handler
+vim main.yml
+- name: restart_apache
+  service:
+     name: "{{ apache_daemon }}"
+     state: restarted
+:wq1
+
+#cd meta/
+vim main.yml
+author: sanjay dahiya
+description: this role going to configure apache server
+company: 
+
+#cd tests
+
+vim test.yml
+- hosts: localhost
+  remote_user: root
+  roles:
+    - cloudknowledges
+
+#ansible-playbook test.yml (to test at local machine)
+
+#cd /etc/ansible/roles
+#cd cloudknowledges
+#cd tests
+
+vi test.yml
+- hosts: all 
+  roles:
+    - cloudknowledges
+:wq!
+#ansible-playbook test.yml     
+
+
+tar -czvf ansible-role.tar cloudknowledges
+
+=====================
+do the same the process for custom roles 
+just remmeber while playing the playbook(role mentioned in it)..the playbook should be 
+at same place where the role is made.
+
+37. Ansible Roles Galaxy
+
+the process of sharing the role to others
+sign up on http://galaxy.ansible.com ... upload your role by compressing it in tar format

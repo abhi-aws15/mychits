@@ -1,0 +1,975 @@
+1. Introduction
+when there were no facilities of virtualization and we need number of servers what will we do.
+A developer build a application. They have to test it on n number of OS. in past they buy 
+hardwares put os with liceses they need huge resources.
+
+but now one hardware with high configuration. we install Hyper-v openstack KVm vmware. we 
+make small virtual machines. but here resources are not utilised complete its wasted. docker
+utilises minimum resources
+
+#docker --version
+#docker info
+#yum install docker -y
+#systemctl start docker
+#systemctl enable docker
+#docker --version
+
+2.Docker container Basic command create,start,stop,rm
+#docker container --help
+#docker container ls (list of RUNNING containers)
+#docker container ls -a (listing all containers)
+#docker container run ubuntu (first creating container then deploying ubuntu image ) 
+if there is no image on base machine then it will run from docker hub....it will create container 
+deploy image then exit
+#docker container ls -a (to verify)
+#docker container run ubuntu sleep 60 (runs for 60sec keeps teminal busy)
+#docker container run -d ubuntu sleep 60 (d=detach ... runs for 60 sec in backgroud, terminal is free)
+#docker container run -d -it ubuntu   (it=interactive mode ...always on)
+#docker container ls to verify
+#docker container stop d0d2 (containerid)
+#docker container start d0d2 (start container)
+#docker container restart d0d2 (restart container)
+#docker container rm 68c9 (delete container)
+##docker container rm -f d0d2 (delete forcefully running container )
+#docker container run -it ubuntu /bin/bash (creating container and entering it)
+    we can do ls inside
+    apt-get update
+    apt-get install apache2
+    cd /var/www/html
+    echo "hi welcome" > index.html
+    service apache2 start
+#docker container inspect 44e3
+  we can see ip here
+#curl https://172.17.0.3 (if we hit ip we can see hi welcome) 
+#docker container stats 44 (to see how much ram 44 container is consuming)
+#free -h (to see total ram of machine)
+
+3.Docker container port,rename,copy,kiillwaitpause... 
+#docker container run -it ubuntu /bin/bash
+u will be inside contianer
+ apt-get update
+ apt-get install apache2
+ cd /var/www/html
+ echo "you are awsome" > html
+ service apache2 start
+now on other terminal do #docker container inspect 898 (to see ip)
+#curl ip
+
+this is only accessible when you are sitting inside docker host....but to 
+access it from outside you have to map port
+#docker container run -it -p 3600:80 ubuntu /bin/bash [3600 is port of docker host and 80 is port of container]
+  now same do install apache 
+ u will be inside contianer
+ apt-get update
+ apt-get install apache2
+ cd /var/www/html
+ echo "you are awsome" > html
+ service apache2 start
+
+CTRL + Q/P (to exit container without stopping it)
+now copy public ip of aws docker instance:port
+3.36.32.33:3600
+
+
+#docker container rename c432 apacheserver (c432=container id apacheserver=newname)
+#docker container run -it --name webserver ubuntu  (creating container whith name)
+#docker attach container apacheserver (to go inside container give name or id)
+#docker container pause apacheserver (container will be paused)
+#docker container unpause apacheserver
+##docker container kill apacheserver (forcefully stop container)
+#docker container wait apacheserver (gives exit status)
+-----------------
+#tar -czvf redhat.tar /etc/
+ redhat.tar
+i want to copy this in a container
+#docker container run -it ubuntu /bin/bash
+#docker container ls (to get the id)
+#docker container cd redhat.tar 8316:/tmp/
+#docker container attach 8316 (go inside contai to verify)
+------------------
+#docker container export 8316 > web.tar (sending this to friend)
+#ls
+#docker container export 8316 -o web1.tar
+
+#docker image import web.tar webimage (he will make a image out of it and then create a container out of it)
+#docker container run -it webimage /bin/bash
+  go inside tmp and verify redhat.tar
+----------
+#docker container commit 8316 mywebimage (making a image out of cont 8316=cont id mywebimage=name)
+#docker image ls verify
+
+#docker container run -it mywebimage /bin/bash (deploying the image)
+ we see redhat.tar in /tmp
+
+4.HOW TO CREATE IMAGE PUSH AND PULL FROM DOCKER HUB
+
+#docker pull httpd
+#docker image ls
+#docker login 
+ give credentials
+#docker tag mysql sd171991/sqlserver
+#docker image ls
+#docker image push sd171991/sqlserver
+
+5.Docker Volumes,Mount
+
+#docker volume ls
+#docker container run -it --name webserver httpd /bin/bash (httpd- image ....webserver-container name)
+#docker container run -it --name web-server ubuntu /bin/bash
+#docker container ls (to verify on 2nd terminal)
+Now inside container
+ apt-get update
+ apt-get install apache2
+ cd /var/www/html
+ ls
+ echo "docker volume" > index.html
+#service apache2 start
+#docker container inspect cont-id (to check ip of docker cont)
+#curl cont-ip (to verify)
+now delete container n then try
+#docker container rm -f 97
+#curl 172.17.0.2 (it will not work)
+
+#docker volume create myvolume
+#docker volume ls
+#docker volume  inspect myvolume (to get details)
+if we do cd /var/lib/docker and then go inside volmes to find myvolume
+
+#docker container run -it -v myvolume:/tmp --name web-server ubuntu /bin/bash
+(/tmp is where u want to mount volume on the container )
+ now u will be inside container cd/tmp and touch abc{1..10} u will see files
+
+this files can also be seen in /var/lib/docker/volume/myvolume on docker host
+now delete this container and create new container
+#docker container rm -f web-server 
+
+#docker container run -it -v myvolume:/tmp --name web-server1 ubuntu /bin/bash
+if u go inside /tmp and do ls u can see the files 
+
+The point is myvolme is the original volume we are just porting it to the container..
+we can delete create edit files on container but originally it's effective in myvolume
+-----------------
+Making a custom image 
+#vim Dockerfile
+ FROM ubuntu:14.04
+ RUN apt-get update -y
+ RUN apt-get install apache2 -y
+ RUN service apache2 start
+#docker image build -t myimage .
+#docker image ls           to verify
+
+#docker volume inspect myvolume
+#cd /var/lib/docker/volumes/myvolume/_data/
+delete all files and create a new file
+echo "hello india" > index.html
+#cd
+#docker container run -it -v myvolume:/var/www/html myimage /bin/bash
+cd /var/www/html if we do ls we will get index.html and we can cat to see it
+
+now on other terminal 
+docker container inspect f333
+curl 172.17.0.2
+
+now u can edit file cd /var/lib/docker/volume/myvolume/_data
+#vim index.html
+ hello india
+ welcome to aws
+curl to see effect
+----------------------
+dtabase example
+#docker image pull mysql
+#docker image ls
+#docker image inspect myql
+ it will give info that volume will be mounted on /var/lib/mysql
+#docker container run -it --name mydbserver -e MYSQL_ALLOW_EMPTY_PASSWORD=true mysql
+cont is running but as we didnot give binbash
+#docker container exec -it mydb-server /bin/bash (go inside container)
+ #mysql (u will go inside )
+ show databases (u will see database)
+ create database india (show database to see india )
+ exit exit
+#docker container ls (its still running)
+#docker volume ls
+ b1jsfksfksflllllllllsfnkf
+ myvolume  (u will see two volumes..the volume parameter was already added in the image so
+when u created container it already created a volume)
+#docker container inspect cpntainerid (u can see b1js mounted on mysql) 
+#docker container rm -f containerid (mysql db cont wil be deleted)
+#docker volume ls (but u can still see this volume...u can mount it on another cont)
+
+
+#docker container run -it -v b1jsfk:/var/lib/mysql --name mydbserver -e MYSQL_ALLOW_EMPTY_PASSWORD=true mysql /bin/bash
+  #mysql
+  #show databases (we can see india)
+--------------
+we create a directory and mount it on container
+#mkdir /mydir (create sm files)
+#docker container run -it -v /mydir:/tmp ubuntu /bin/bash
+
+if u cd/tmp u will see the files
+
+6. HOST YOUR OWN DOCKER REGISTRY
+Developer creates custom image in dockerfile =push image to dockerhub =pull  image
+but for security purposes we do private repositories
+7. lab docker registry
+create aws instance.. set root passwd... and uncomment permit root login and pass authentication yes
+#systemctl restart sshd 
+#yum install docker* -y
+#systemctl start docker
+#systemctl enable docker
+#docker image pull registry
+#docker image pull ngnix
+#docker image pull ubuntu
+#docker image ls
+#docker container run -itd -p 5000:5000 --name simple_registry registry
+
+#yum install elinks (cmd line browser)
+#elinks
+ 127.0.0.1:5000/v2/_catalog
+press ok then open (u see there is no images in repository)
+
+
+#docker image tag nginx 127.0.0.1:5000/ngnix (localpath/nginx)
+#docker image push 127.0.0.1:5000/ngnix
+#elinks (here u will verify see images)
+
+#docker image tag ngnix 172.31.90.197:5000/nginx
+#docker image push 172.31.90.197:5000/nginx (it will fail because it will say to build secure  connection)
+
+#vim daemon.json
+ {
+     "insecure-registries" : ["172.31.90.197:5000"]
+ }
+#cp daemon.json /etc/docker
+#systemctl restart docker
+#docker container start residtrycont=id
+
+#docker imageg tag registry 172.31.90.197:5000/registry
+3docker image push 172.31.90.197:5000/registry
+
+8.Secure ssl certificate
+mkdir cers
+
+
+
+
+
+
+
+
+
+
+
+
+9. Dockerfile
+
+10. Dockerfile lab
+
+#vim Dockerfile
+ FROM centos
+ RUN touch india
+ RUN touch abc
+ RUN touch abc1
+ RUN touch abc2
+ RUN touch abc3
+ RUN yum update -y && yum install -y httpd
+ RUN yum install tree -y
+#docker image build -t cloudknowledges:8 . (. =current directory t=tag)
+
+it uses layered architecture...for ever tasks it creates a container ..runs the task in it..exits
+the container and build a image........... on the top of that image it creates a container
+runs second tasks exits the container and creates a image. thats how it works
+
+and if u build the image from the same dockerfile with new changes the eariler tasks will
+be pulled from cache for the new task in backend it uses the last container runs the task 
+exits the container and give the image
+
+11. dockerfile part3
+
+#vim Dockerfile
+ LABLE Name="abhishek"
+ LABLE EmailID="abhinitp2k12@gmail.com"
+ LABLE Mobile="7029214447"
+ ENV Name=cloudknowlledges
+ ENV Pass=docker@2020
+ FROM centos
+ RUN touch india
+ RUN touch abc
+ RUN touch abc1
+ RUN touch abc2
+ RUN touch abc3
+ RUN yum update -y && yum install -y httpd
+ RUN yum install tree -y
+
+Lables are given so that if problem occurs he can contact me. He can inspect the image also
+to get the lables. Lets build this
+
+#docker image build -t cloudknowledges:10 .
+#docker image inspect imaageidofcloudknowledges:10 (u can see lables)
+
+after entering env vriables build the file again
+#docker image build -t cloudknowledges:11 .
+#docker container run -it cloudknowledges:11
+ env (u can see env variables)
+exit
+
+now use case of env variables
+#vim Dockerfile
+ RUN useradd $Name && echo "cloudknowledges:docker@2020" | chpasswd
+ RUN useradd $Name && echo "$Name:$Pass" | chpasswd
+
+this variables will automaticall call the name and passwd.. the first line is not necessary
+now build to verify
+#docker image build -t cloudknowledges:12 .
+#docker container run -it cloudknowledges:12     (create cont and verify insside it) 
+ sudo su
+ su - cloudknowledges
+---------------
+Now i want to go inside as a normal user whenever i create a container not as a root
+#vim Dockerfile
+ LABLE Name="abhishek"
+ LABLE EmailID="abhinitp2k12@gmail.com"
+ LABLE Mobile="7029214447"
+ ENV Name=cloudknowlledges
+ ENV Pass=docker@2020
+ RUN useradd $Name && echo "$Name:$pass" | chpasswd
+ FROM centos
+ RUN touch india
+ RUN touch abc
+ RUN touch abc1
+ RUN touch abc2
+ RUN touch abc3
+ RUN yum update -y && yum install -y httpd
+ RUN yum install tree -y
+ USER $Name
+
+if we build this image and deploy a container from this image..we will get shell of
+normal user cloudknowledges
+#docker image build -t cloudknowledges:14 .
+#docker container run -it cloudknowledges:14
+
+
+to set working path when u create a container and be inside it
+#vi Dockerfile
+ WORKDIR /var/www/html
+build the image and create container to see
+
+to copy a file from docker host to container
+#touch india
+#vi Dockerfile
+ COPY india /var/www/html
+build and create container to verify
+-------------
+#tar  -czvf docker.tar.gz /etc/
+#vim Dockerfile
+ COPY docker.tar.gz /var/www/html
+#docker image build -t cloudknowledges:17 .
+#docker container run -it cloudknowledges:17
+ do ls u will see tar file ..
+----------------------------
+#vim Dockerfile
+ ADD docker.tar.gz /var/www/html
+
+this will extract then copy
+if u build image and create container to see it..
+u will get extacted file (important interview part)
+ADD also acts as wget
+---------------
+#vim Dockerfile
+CMD ["tree"]
+the first command executed while creating container after image build
+
+but first remove WORKDIR  otherwise it is 0 directory 0file ..u will not understand  
+if two three CMD line is there last CMD is effective
+
+12. DOCker file part4
+if u want to access docker container through ssh then u have to install openssh-server 
+start service give port
+
+#vim Dockerfile
+ FROM ubuntu:14.04
+ LABLE Name="abhishek"
+ LABLE EmailID="abhinitp2k12@gmail.com"
+ LABLE Mobile="7029214447"
+ ENV Name=cloudknowlledges
+ ENV Pass=docker@2020
+ RUN useradd $Name && echo "$Name:$pass" | chpasswd
+ RUN touch india
+ RUN touch abc
+ RUN touch abc1
+ RUN touch abc2
+ RUN touch abc3
+ RUN apt-get update && apt-get install -y tree \
+    python \
+    openssh-server \
+    openssh-client 
+ RUN mkdir -p /var/run/sshd       (to start daemon we create folder)
+ EXPOSE 22
+ CMD ["/usr/sbin/sshd", "-D"]      (to start demon)
+#docker image build -t cloudknowledges:51 .
+#docker container run -itd cloudknowledges:51
+#docker container ls (to see running contianer)
+#docker container inspect containerid (to see ip)
+we will now connect this container through ssh
+#ssh cloudknowledges@172.17.0.3
+ give passwd u will be inside
+
+but we are doing ssh from docker host...thats why we can access it 
+
+from outside like lappy we need to hit the private ip of docker instance (ifcongig=eth0)
+but still u wont be able to unless u have done port mapping
+
+#docker container rm -f $(docker container ls -aq)  deleting all containers
+#docker container run -itd -p 2222:22 cloudknowledges:51
+
+still u cant access the container from outside as the privaet ip is not meant to connect outside
+world to server..we have to use public ip of that instance
+#ssh cloudknowledges@publicipofdockerinstance:2222
+------------
+13. DOCKERFILE 5
+#vim Dockerfile
+FROM centos:latest
+MAINTAINER abhinitp2k12@gmail.com
+RUN yum install -y httpd \
+  zip \
+  unzip
+ADD https://www.free-css.com/assets/files/free-css-templates/download/page247/kindle.zip /var/www/html
+WORKDIR /var/www/html
+RUN unzip kindle.zip
+RUN cp -rvf markups-kindle/* .
+RUN rm -rf _MACOSX markups-kindle kindle.zip
+CMD ["/usr/sbin/httpd", "-D",  "FOREGROUND"]
+EXPOSE 80
+
+cmd is used to start daemon cp is used to copy everything from this unzip file to the current
+directory
+
+#docker image build -t cloudknowledge:50 .
+#docker container run -itd -p 8000:80 cloudknowledge:50
+
+Now grab public ip of the server and paste it on browser with :80
+
+14. Dockerfile Part-6
+if Dockerfile is in some other directory then 
+#docker image build -t devimage:1 -f /cloud/Dockerfile .
+
+if u use some other name instead of Dockerfile
+
+#vim cloudknowledges
+ FROM ubunu
+ RUN touch abc{1..2}
+#docker image build -t devimage:2 -f cloudknowledges .
+
+#mkdir cloud
+#mv cloudknowledges /cloud
+#tar -czvf cloudknowledges.tar.gz cloudknowledges  
+#docker image build -t devimage:4 -f cloudknowledges -< /cloud/cloudknowledges.tar.gz
+
+if there is Dockerfile inside the tar file then you dont need to specify -f filename
+-----------
+building docker file without writing codee
+#docker image build -t devmyimage:5 -<<EOF
+ FROM ubuntu:14.04
+ RUN apt-get update && apt-get install -y apache-y
+ EOF
+-----------
+for building dockerfile present at remote location
+
+#docker image build -t devimage:2 -f cloudfile https://www.cloudknowledges.com/cloud/cloudfile
+
+-----------------------
+15. Docker-compose part1
+prerequisite- docker should be  installed
+              daemon start and enabled
+              docker-compose should be installed
+instruction written in the jason or yml format..it provision the resources fast and it can be 
+unprovisioned by bringing the jason or yml file down. suppose 50 containers of diffret 
+configuration is made then with docker command is tough so docker-compose is usefull
+
+on google search docker compose install
+follow steps and copy cmds and install
+
+wordpress project.. we need two containers first DB container and second wordpressweb container
+
+BY SIMPLE METHOD
+#docker container run --name db-mysql -e MYSQL_ROOT-PASSWORD=mypassword -d mysql:5.7
+#docker container ls
+#docker container inspect contid (see ip of container)
+
+#docker container run -d -p 8000:80 --name my-wordpress -e WORDPRESS_DB_HOST=172.17.0.2:3306 -e WORDPRESS_DB_USER=root -e WORDPRESS_DB_PASSWORD=mypassword wordpress
+
+grab public ip and paste on brwser with colon 8000
+-----------------
+now compose method
+#vim docker-compose.yml   (on docker hub search wordpress copy the code  )
+version: '3.3'
+services:
+   db:
+     image: mysql:5.7
+     volumes:
+       - db_data:/var/lib/mysql
+     restart: always
+     environment:
+       MYSQL_ROOT_PASSWORD: somewordpress
+       MYSQL_DATABASE: wordpress
+       MYSQL_USER: wordpress
+       MYSQL_PASSWORD: wordpress
+   wordpress:
+     depends_on:
+       - db
+     image: wordpress:latest
+     ports:
+       - "8000:80"
+     restart: alwways
+     environment:
+       WORDPRESS_DB_HOST: somewordpress
+       WORDPRESS_DB_USER: wordpress
+       WORDPRESS_DB_PASSWORD: wordpress
+       WORDPRESS_DB_NAME: wordpress
+volumes:
+    db_data: {}       
+#docker-compose up -d (create configuration in file)
+#docker-compose down
+------------------------------
+16.DOCKER COMPOSE PART2
+docker compose file version seach on google ...
+for example 3.7 runs on 18.06.0+
+
+#vim docker-compose.yml
+version: '3'
+services:
+     webapp1:
+         image: ngnix
+
+     webapp2:
+         image: ngnix
+         ports:
+            - "8000:80"
+
+#docker-compose up -d (if u make changes in docker compose file and execute the command then 
+it will only recreate means update the configuration)
+
+#docker-compose scale webapp1=4 webapp2=2 (making replicas)
+#docker container ls
+#docker-compose ps (to see containers deployed by docker-compose)
+#docker-compose stop (to stop containers by dockercompose)
+#docker-compose ps (u will state as exited)
+
+u can restart, start ... docker-compose --help (to see more)
+#docker-compose up --no-start (it will make container without starting it)
+#docker-compose rm (delete stopped containers)
+---------------
+if u have written file with other name
+vim cloudknowledges.yml
+#docker-compose -f cloudknowledges.yml up -d
+----------------------
+17.Docker compose part3
+#vim docker-compose.yml
+version: '3'
+services:
+       cloudknowledges:                                (just a name of service) 
+              build: .
+              image: cloudknowledges:1
+#vim Dockerfile
+FROM ubuntu:14.04
+RUN touch abc
+
+#docker-compose build
+#docker image ls (to verify)
+
+[note- there can be other services written inside compose file..so docker-compose up
+will execute all the tasks including build but we only need to build not other
+services shall be executed so we use docker-compose build in that]
+#docker-compose config (to see the content of docker-compose)
+
+#docker-compose events (to see events generated while executing the docker-compose 
+file on another terminal)
+
+#docker-compose exec cloudknowledges touch abc (to execute command on running command)
+#docker-compose exec cloudknowledges ls (u can see abc file)
+#docker-compose images (to view images creatd by docker-compose only )
+#docker-compose kill (forcesfully kill container )
+#docker-compose pull (apart from other services mentioned in docker-compose file
+it will only pull the images mentioned there)
+----------
+#docker image ls
+#docker image tag cloudknowledges:1 sd199981/cloudknowledges
+#vim docker-compose.yml
+version: '3'
+services:
+    services1:                                
+          build: .
+          image: sd199981/cloudknowledges
+#docker-compose push (it will push the image mentioned in docker-compose file)
+remember to docker login
+-------------------------------
+18. DOCKER NETWORK 1
+when u install docker and start service.. it becomes docker host. by default a bridge network 
+gets created(172.17.0.0/16). when u create container it connects with bridge 
+network and gets ip(172.17.0.2/16).   a gateway network is....known as docker0(172.17.0.1). 
+whenever a container runs a virtual network is created between terminal n docker0..through this
+ virtual network we can get into container from docker host.
+eth0=>virtualnetwork=>gateway(docker0)=>bridgenetwork=>container  when u sittin inside
+ docker-host
+
+But from a laptop to container..u have to enter into docker-host first through eth0 
+interface card (10.125.170.10). we map eth0 with container ip to go inside. but
+there are lot of containers, so we do port mapping. 
+if u hit the port of 10.125.170.10:8000 let me connect to container1
+
+we can create number of bridge networks. if ips get full. or if we want to create separte
+network different environments like test,dev,qa. we can give diffret subnet ranges
+test team=10.50.0.0/24  container creating = 10.50.0.2/24 
+dev-team=10.100.0.0/24                        10.100.0.2/24 
+when a container is created  it connects to respective network.
+we isolate the network like this.
+
+solution so that two environments can communicate to each other is connecting them 
+to a common network (eth1). but its not recommended. the best way is port mapping.
+we have to port mapping on eth0 like container1 is port mapped to 7000 and container 2 is 
+port mapped to 7000. then can communicate. 3rd way is docker overlay
+
+19. DOCKER NETWORK PART2
+
+#docker network ls
+bridge 211675f87e5a     (this is docker0)
+host
+null
+#docker network inspect 211675f87e5a (u can see ip range "172.17.0.0/16")
+#ifconfig (u can see docker0=172.17.0.1)its virtual network..its kind of gateway for the 
+container
+inspecting docker0 we can also see the containers in that network
+#docker container run -it ubuntu:14.04
+we can see vethe5c3453 an virtual interface
+
+#route -n (cmd inside container we can see gateway 172.17.0.1)
+#docker container run -it --hostname cloudknowledges --dns 8.8.8.8 ubuntu:14.04 (sethostname and dns according to you)
+#cat /etc/resolv.conf (we can see the nameserver/dns)
+
+#docker network ls (to see all networks)
+#docker network create dev-team
+#docker network rm dev-team prod-team
+#docker network create dev-team --subnet=10.100.0.0/24 (to set ip range)
+#docker network create prod-team --subnet=10.200.0.0/24
+
+
+now create container in particular network
+#docker container run -it --network=dev-team ubuntu:14.04
+ ifconfig (u can see ip range in dev-team network)
+
+#docker container run -it --network=prod-team --ip 10.200.0.100 ubuntu:14.04
+(creating container with custom ip))
+
+create containers and ping from different containers n network..same network will ping..
+other network will not
+
+20. Docker Network 3
+how to communicate containers from two different network
+
+dev-team              a container 10.100.0.100/24
+10.100.0.0/24         ubuntu:14.04    httpd(80)
+
+prod-team             a container 10.200.0.100/24
+10.200.0.0/24
+
+a common network eth0=172.31.93.47 (we have to port 8000 to 80..so the other cont will hit the etho ip and they will entre container0
+similarly we will connect port of 8001 to 80 of second container vice versa
+
+#docker network ls
+#docker network inspect prod-id (u will see the ip range as discussed above)
+
+#docker container run -it --network=dev-team -ip 10.100.0.100 -p 8000:80 ubuntu:4.04
+(8000=local host port 80=contianer port)
+apt-get update
+apt-get install apache2
+cd /var/www/html
+echo "welcome to 10.100.0.100" > index.html
+service apache2 start
+
+now making container on other network
+#docker container run -it --network=prod-team --ip 10.200.0.100 ubuntu:14.04
+doing ifconfig in the container to verify
+ apt-get update
+ apt-get install wget
+ wget 10.100.0.100 (u cannot acces..as the container is in other network)
+
+so we have to hit port 8000 of eth0 to connect
+ wget 172.31.93.47:8000 (now it works)
+------------------
+now doing vice -versa
+in the current container
+ apt-get install apache2 -y
+ cd /var/www/html
+ echo "welcome to 10.200.0.100 container" > index.htmml
+ service apache2 start
+
+now on other container 
+apt-get install wget
+wget 10.200.0.100 it wont work
+wget 172.31.93.471:8001 itwill work now
+
+ohshit u havent done port mapping 
+docker container run -it --network=prod-team -p 8001:80 --ip 10.200.0.100 ubuntu:14.04
+apt-get update
+apt-get install apache2 -y
+cd /var/www/html
+echo "welcome to 10.200.0.0 container" index.html
+service apache2 start
+
+start wget wget 172.31.93.471:8001 from other container itwill work now
+
+21. Docker part 4
+
+conecting two containers without port mapping
+
+a common network is setup. "comm-team" (10.99.0.0/24). when we connect containers from two
+other networks to this..it will get an ip from this comm-team network. and we can ping each other
+from containers
+
+#docker network create com-team --subnet 10.99.0.0/24
+now connect those containers to this network
+#docker network ls (u will get the id)
+#docker network connect 13f0comteamid 157fcontainerid
+
+(if u do ifconfig in the container u will see a new interface card eth1)ip=10.99.0.2
+
+#docker network connect 13f0comteamid 2ndfcontainerid
+
+
+now wget from one container to another
+wget 10.99.0.2 u will get response
+
+22. Docker network Part5
+#docker network ls
+There is a default network called host. Its basically the eth0 network.
+
+#cat /etc/os-release (u will the details of the machine)
+
+now open another terminal
+#docker container run -it --network=host ubuntu:14.04
+ when u entre the container u will see the same container id as the ip of the machine
+in order to differentiate hostmachine~
+                          container:/
+
+so in this procedure network is not isolated. if u want to diffrentiate #cat /etc/os-release
+on the container and host to see.
+------------------
+when u do docker network ls ....there is a network called 'none'. If u connect container
+to this network there will be no network
+#docker container run -it --network=none ubuntu:14.04 ...u wont get netwrk
+---------------------
+#docker container run -it ubuntu:14.04
+ ifconfig 
+u will get connected to the bridge network defaultly
+
+if u want to connct current container from one network to other network
+#docker network connect dev-temnetworkID containerID
+to disconnect write same command with disconnect instead of connect
+-------------------------
+IF there is a network with no container attached you can delete it
+#docker network prune
+#docker name rm networkID               to delete
+
+#docker container rm -f $(docker container ls -aq) (delete all containers now delete network)
+#docker network prune
+
+23. Docker swarm
+
+we have to run a web application on container. But as the load is huge to ba;ance it we need 100
+containers
+
+Previously what we do is install docker pakage enable the service the launch one container
+inside it we dploy webapp test it then create a image out of it. Then we replica it 100 containers
+. Then we attach ingress LB to 100 containers. eth0=10.125.170.100 is connected to LB. Trrafic
+goes through eth0 to LB to containers. We can do autoscaling of the containers too.
+
+But if the instance on which we are running docker goes then what will u do?
+
+take four machines,install n enable docker, assign ips, then active the docker swarm 
+feature(by default its inactive)..make one machine master and other slave. Now the 100
+container will not be in single machine. It will divided like 20 conts 20contains 20 30.
+Suppose if one machine is down then those 30 containers will be shifted to others machines.
+So through this clustering u get high availabilty and durability. u can keep the machines
+in different region for even more high avalaibility.
+we assign tasks on manager and manager will run those tasks on worker or itself.
+if manager gets down then no one will be there to assign tasks to others. so we make 3-4 
+manager. BUt there is election betwen these 3 masters that who will be the leader. we will setup 
+ingress LB On each machines. and when we hit the ip of LB 10.125.170.100 at 80 it will
+distribte the traffic to container.
+
+we will attach a LOAd BALANcer to the 4 machines. Traffic will go through Lb to inngress lb
+to containers
+we resolve the LB id with
+www.dsnjjsy.com with A nane record and pass url to clients
+
+24. Docker swarm part2
+4 machines on aws(1master 2 node)
+install docker on all machines
+systemctl start docker
+systemctl enable docker (on all machines)
+
+the machine master on which u want to make it a master
+#docker swarm init
+#docker node ls (u can see only leader)
+
+it will give a command ..if u run it in any machine u will turn it into a worker
+#docker swarm join --token SWMTIKN-1-SJBHFJSKJVBJVSJDHBJ 172.216.83.216:2377
+run this command on workers
+
+#docker node ls (on master to verify the nodes)
+#docker node inspect nodeid (u can see worker mentioned)
+#docker node promote workerid (exec on master ..to promote worker to manager)
+                                 now its status will be 'reachable'
+#docker node demote workerid (to demote)
+#docker node rm workerid (to kick out of cluster) but unless node is down u cant kick
+#docker node rm workerid --force (to forcefully kick)
+
+on worker 
+#docker swarm leave (to left cluster)
+#docker info (u will see swarm=inactive)
+on master if u run docker node ls ( u will see that node as down)
+how to regain token command if u lost it
+#docker swarm join-token worker  
+ then if u run the resultant command on worker itwill join the cluster as a worker
+#docker swarm join-token manager
+then if u run the resultant command on worker itwill join the cluster as a manager
+
+25. Docker swarm part3
+on master
+#docker service create --name web-server --replicas 4 nginx (creates a service named webserver in which itt will create 4 replicas
+of container and deploy ngnix image on the containers)
+#docker service ls (to verify that webserver is running)
+#docker service ps jvoServiceidhere (u will get details of the containers running on whcich node)
+#docker service scale service_id=12 (put service id & desired replicas)
+#docker service rm serviceidjvo (to delete service and containers related to it)
+##docker service create --name nginx-server -p 8000:80 --replicas 4 nginx (all the contaiens will be port to 8000 of their respective machines's eth0)
+use public ip (not etho,eth0 is private ip)on browser with :8000
+
+but suppose if u scale it to 12 replicas then ..each machine will have 3 containers each . Earlier we 
+use to connect each container with differnt port. But here irrespective of 1000 containers in one machine
+it doesnot reqire port map to different ports(8000,8001..).because docker swarm creates a Ingress load 
+balancer in each machine
+
+26. Docker swarm Part4
+#vim Dockerfile
+FROM centos:latest
+MAINTAINER sanjay.dahiya332@gmail.com
+RUN yum install -y httpd \
+  zip\ 
+ unzip
+ADD https://www.free-css.com/assets/files/free-css-templates/download/page247/kindle.zip /var/www/html
+WORKDIR /var/www/html
+RUN unzip kindle.zip
+RUN cp -rvf markups-kindle/*
+RUN rm -rf _MACOS markups-kindle kindle.zip
+CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
+EXPOSE 80
+#docker image build -t appimage:1 .
+#docker image ls
+
+[place the image in the docker hub it will automatically pull...here we r goimg to write Dockerfile
+in each node and manually building the image]
+
+now on master create service
+#docker service create --name app-server -p 80:80 appimage:1
+
+this command will 1 container in any of the 4 machines. But the beauty of docker swarm is if u hit
+public ip of any machine 556.22.45.36:80 then u can access the container irrespective of container 
+in any machine
+
+#docker service scale servviceid=12
+u will get 12 containers...
+--------
+now ur clients get bored u need new content so u have to update the image as u cannot idividualy 
+update every container... so we make changes in Dockerfile update source code 
+
+#vim Dockerfile
+FROM centos:latest
+MAINTAINER sanjay.dahiya332@gmail.com
+RUN yum install -y httpd \
+  zip\ 
+ unzip
+ADD https://www.free-css.com/assets/files/free-css-templates/download/page251/greatseo.zip /var/www/html
+WORKDIR /var/www/html
+RUN unzip greatseo.zip
+RUN cp -rvf greatseo/*
+RUN rm -rf greatseo.zip greatseo
+CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
+EXPOSE 80
+#docker image build -t appimage:2 .             (build this image on worker nodes also to work)
+#docker image ls
+
+#docker service ls (u can see service,now update the current service with new imahe)
+#docker service update --image appimage:2 twlshaafla88{serviceid}
+
+if some how deployment is failed u can roll back
+#docker service rollback twlshaafla88
+
+27. Docker Swarm Part5
+Docker swarm visualizer
+TO visualizze evrything on console ...like to see live the number of containers adding n deleteing
+
+#docker swarm init
+paste the token command in nodes
+#docker node ls
+#docker service create --name=viz --publish=8080:8080/tcp --constraint=node.role==manager --mount=type=bind,src=/var/run/docker.sock,dst=/var/run/docker.soc dockersamples/visualizer
+grab public ip of docker instance and :8080 on browser to visualize
+
+now run a new service to 
+#docker service create --name web-server -p 80:80 --replicas 4 ngnix 
+and now u can visualize the containers on the visualizer
+
+28. DOCKER SWARM PART_6
+LABLES we give lables to the machines the manager and worker.
+so while creating service we want 12 replicas to go in one worker node. So while creating
+service we define lable in the command.
+Manager,Worker=This are predefined lables
+if u we create lables by ourselves its called userdefined lables 
+
+#docker node inspect managernodeid (u can see lables as manager)
+#docker node inspect workernodeid
+
+#docker service create --name web-server -p 80:80 --replicas 4 --constraint="node.role==manager" nginx
+manager is predefined lables ..here all the containers will go to master
+similarly node.role==worker (then all the containers will go into 3worker nodes)
+
+
+now setting lables to workers sitting here at manager
+#docker node update --label-add="sannjay=dahiya" efkaNODEIDkef
+#docker service create --name web-server -p 80:80 --replicas 4 --constraint="node.labels.sanjay==dahiya" nginx
+now all the containers will go in the worker node with lable sanjay==dahiya
+
+now engine based labeling...go in worker node
+#vim daemon.json
+ {
+         "labels" : ["name=cloudknowledge"]
+
+}
+
+#cp daemon.json /etc/docker
+#systemctl restart docker
+
+Now on masternode we 
+#docker node inspect nodeid (we can engine based labels)
+#docker service create --name app-server -p 80:80 --replicas 4 --constraint="engine.labels.name==cloudknowledge" nginx
+
+29.Docker SWARM PART7
+Node availability(active pause drain)
+
+#docker node update --help | grep avail (u can see three types of availability)
+active means node is ready for deplyoing containers by the services created by manager
+
+pause means no further tasks will be taken in the worker node.no container will
+be created after pause
+
+for troubleshooting purpose we drain the node . All the containers shift to other nodes
+
+#docker service create --name web-server -p 80:80 --replicas 4 nginx (all containers will go in 4 machines)
+#docker node update --availability=pause nodeid
+
+now if u create service, the containers will go in all nodes except the paused node  
+
+#docker node update --availability=active nodeid
+#docker node update --availability=drain nodeid 
+
+30.DOCKER WITH ANSIBLE 

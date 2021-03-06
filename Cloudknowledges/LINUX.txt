@@ -1,0 +1,313 @@
+
+
+## 40. Break root passwd
+```sh
+#Restart=up n down arrow continue press (break the kernal)
+#Select first line....press e to edit...
+# "Linux 16...bla bla bla" get to the end of the line(by pressng ctrl+e)
+#Give space and write rd.break
+#Now press ctrl + x start
+#Now entre command
+mount -o remount rw /sysroot
+chroot /sysroot
+
+passwd root
+  New password-
+touch /.autorelabel
+#exit
+#exit
+```
+```sh
+Without autorelabel....
+
+Same as above but write rd.break  selinux=0
+```
+## 42. Linux sudo commands
+```sh
+#Giving sudo permission to normal users
+which fdisk -l (to check binary of root commands)
+/sbin/fdisk
+
+vim /etc/sudoers
+   se nu (give line numbers)
+   At number 100 enter user details, press o to get a blank line
+   Harry     ALL=(ALL)    ALL
+:wq!
+```
+```sh
+For giving permission to selected commands
+   Harry      ALL=(ALL)   /sbin/fdisk,/sbin/useradd,/sbin/reboot
+:wq!
+   
+For giving full permission except selected ones
+  Harry.      ALL=(ALL)    ALL,!/sbin/reboot,!/sbin/poweroff
+```
+```sh
+##Giving permission to group
+groupadd dev
+gpasswd -M Harry,Natasha,Sarah dev
+grep dev /etc/group
+vim /etc/sudoers
+   %wheel  ALL=(ALL)    ALL
+   %dev     ALL=(ALL)     ALL
+
+Point:- so that no passwd asks when user do sudo
+Natasha     ALL=(ALL)   NOPASSWD:ALL
+```
+
+## 43. Linux JOB schedule
+```sh
+##Through at command
+rpm -qa | grep -i at
+systemctl status atd
+If not started then start it
+#systemctl start atd
+# at 12:50
+     at> touch abc
+     at>  touch india
+Ctrl+d to save
+```
+```sh
+ at 12:00 PM October 18 2020
+     at> yum update * -y
+
+Ctrl+d
+
+atq #(to check job scheduling)
+atrm 16 #(cancel job 16=job number)
+```
+## 44. Linux crontab
+```sh
+rpm - qa | grep crontabs
+#If not available install via yum
+systemctl start crond
+systemctl enable crond
+cat /etc/crontab ( syntax available here)
+crontab -e #(will open a file ..press i to enter)
+   39    09    01   01  03   root  echo "welcome to 2030" >> india.txt
+    Min hour date month dayofweek
+:wq!
+ls
+crontab -l #( check job)
+crontab -e
+  */10  09    01   jan  03   echo "welcome to 2030" >> india.txt
+  Every 10 mins
+crontab -r(to delete)
+```
+
+## Crontab through user
+```sh
+useradd cloudknowledge
+passwd cloudknowledge
+crontab -u cloudknowledge -e
+  Add parameters
+crontab -u cloudknowledge -l # (to verify job)
+tail -f /var/log/cron # (to check logs)
+crontab -r -i -u cloudknowledge (to delete with confirmation)
+```
+
+## Running script on crontab
+```sh
+vim daily.sh
+   tar -czvf redhat.tar /etc
+:wq!
+crontab -e
+  *  *  *  *  *    sh /root/daily.sh
+:wq!
+ # Or go to #cd /etc/cron.hourly/ put the sh file here it will execute
+   Every hour
+chmod +x sanjay.sh
+
+#Or... Put sh file anywhere for example/mydir and go to
+cd  /etc/cron.d (you will see 0hourly)
+vim 0hourly
+    01 * * * * root run-parts /mydir
+```   
+```sh
+# to deny normal user for crontab
+vim /etc/cron.deny
+   cloudknowledge
+:wq!
+```
+
+
+## 45 Linux Networking Part 1
+```sh
+ifconfig (to check lan card)
+ens33
+
+nmtui 
+    Edit a connection
+    Add
+     Ethernet
+    Activate a connection
+Or 
+#cd /etc/sysconfig/
+# cd network-scripts
+# vim ifcfg-mycon 
+   Set Parameters here
+ :wq!
+ifdown mycon
+ifup mycon
+```
+================≠==========
+```sh
+nmcli connection show #(to get list of profile connection s)
+nmcli connection show --active #(active list of connection s)
+nmcli device show #(list of devices)
+nmcli connection delete myconn #(to delete profile)
+nmcli device status 
+nmcli connection add con-name delhi-office ifname ens33 type ethernet ipv4.addresses 30.0.0.12/24 ipv4.gateway 30.0.0.1 ipv4.dns 30.0.0.30 autoconnect yes
+#nmcli connection show
+#nmcli device status
+nmcli connection down USA-office (to deactivate profile)
+nmcli connection up UK-profile (to activate 
+nmcli connection modify noida +ipv4.addresses 10.125.170.11/24 # ( to add two ips)
+nmcli connection show noida # (get details info )
+nmcli device disconnect ens33 # (to disconnect ethernet)
+nmcli device connect ens33 # (to connect device)
+```
+
+## 46. Linux Networking Part 3
+```sh
+Setting up Network between 2 machines
+
+Machine 1
+#nmcli connection add con-name machine-1 ifname ens33 type ethernet ipv4.addresses 30.0.0.12/24 ipv4.gateway 30.0.0.1 ipv4.dns 30.0.0.30 autoconnect yes
+#ifconfig
+#ping 10.125.170.21 (communicating with self)
+#hostname (check hostname)
+#hostnamectl set-hostname dns-server
+#bash ( to update shell)
+#vim /etc/hosts
+   12.343.242.21  dns-server
+ :wq!
+#ping dns-server ( it will.work)
+```
+```sh
+Machine 2
+Delete all connections ..make a new connection profile 
+Same as above
+
+#If you entre the hostname of machine 2 in machine 1 and machine 1 in machine 2 ...u can ping vai host name.
+
+vim /etc/hosts
+    12.343.242.21  dns-server
+     12.343.242.22  dhcp-server
+:wq!
+```
+## 47. Linux Networking Part 4
+```sh
+#nmcli connection add con-name home-wifi ifname ens33 type ethernet autoconnect yes (don't entre ip it will automatically pick)
+#nmcli connection show
+#nmcli connection up home-wifi
+#ping www.google.com
+```
+## 48. Linux Networking Part 5
+```sh
+Remotely copy from another machine
+In machine 1
+#mkdir /mydata
+#cd /mydata
+#touch abc{1..10}
+
+In machine 2
+#mkdir /remotedata
+
+Sending from 1 to 2
+#rsync -avh /mydata/abc1 root@10.125.170.22:/remotedata
+Give password of other machine
+Do ls on second machine /remotedata
+
+For copying from other machine sitting here
+#rsync -avh root@10.125.170.22:/etc/*  /mydata
+                        Source.                                Destination
+```
+
+## 50. Linux ssh part 1
+```sh
+#Ssh secure shell .. used for remote 
+#Both machines should ping
+ssh root@10.125.170.22      (destination's ip)
+   Press yes
+  (fingerprint generated in cd .ssh/ )
+
+#entre password and u will entre other machine
+#exit (to loose connection)
+
+U can write ip address or host name
+==============
+#Now ban machine 1 to access machine 2's root
+vim /etc/ssh/sshd_config
+  #PermitRootLogin Yes (uncomment this)
+   PermitRootLogin  no
+ :wq!
+systemctl reload sshd (to apply changes)
+
+Now if u try ssh from machine-1 it won't work
+#ssh root@dhcp-server
+Permission denied
+```
+
+## Now add a user on machine 2 and access from 1.
+```sh
+vim /etc/ssh/sshd_config
+    DenyUsers common             ( To deny normal user 
+:wq!
+systemctl reload sshd
+
+The best practice is 
+    AllowUsers India
+
+U can also execute command after the ssh 
+#ssh root@dhcp-server mkdir /india
+```
+## 52. Without password Ssh
+```sh
+Machine-1 n Machine-2
+#ssh-keygen
+#ssh-copy-id -i root@10.125.170.22 (copy key to machine 2)
+It will be copied under cd .ssh/
+==============
+#rsync -avh id_rsa root@10.125.170.23:/root/.ssh
+(Coping key to machine 3)
+Now machine3 can entre 2 without password
+
+To prevent this in machine 2
+#vim .ssh/authorized_keys
+    from="10.125.170.21"
+  :wq!
+Now machine3 can't login
+
+Or while ssh-keygen ..give passphrase .. it's enhanced security
+```
+## 53.Run ssh on custom port
+```sh 
+On machine 2
+#vim /etc/ssh/sshd_config
+    #Port 22 (uncomment and write 4444)
+      Port 4444
+:wq!
+#vim /etc/selinux/config
+  SELINUX=enforcing ( type disabled)
+:wq!
+#setenforce 0 (disabling without reboot)
+#system restart sshd
+```
+## But bestpractice is mentioning port
+```sh
+#vim /etc/selinux/config
+   SELINUX=enforcing
+#setenforce 1 (enabling without reboot)
+#semanage port -a -t ssh_port_t -p tcp 5555
+
+Still firewall will stop
+#systemctl stop firewalld (but not recommended
+#systemctl start firewalld
+#firewall-cmd --list-all (to check all )
+#firewall-cmd --permanent --zone=public --add-port=5555/tcp
+#firewall-cmd --reload
+
+Now from machine-1
+#ssh root@10.125.170.22 -p 5555
+```

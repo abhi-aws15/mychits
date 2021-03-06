@@ -1,0 +1,599 @@
+1. Jenkins Introduction
+ The main benifit is you get CI CD functionality. 
+CI CD = continuous integration & continuous deployment/delivery 
+It saves a lot of time.
+Developers write the code= for managing they use git hub= testing the source code with 
+the help of sonarqube= source code build server(it depends on lnguage
+java=maven ..android=gradle..dotnet=ant this are build tool for compling) = quality testing
+(deploying software on servers through ansible). a loadbalancer will attached to these
+servers. a team will hit the ip of LB to check its working... then they provide it to customeers
+if everything is perfect evrything will be deployed again on production server. a LB is attached 
+to it. suppose company has DNS cloudknowledge.com
+ 102.100.123.10 A www.cloudknowledge.com= customer will get
+
+
+jenkins is a framework where we add all the tools(git,ant,maven)...for adding you have 
+to install plugins. We create jobs in jenkins.
+
+2. JENKINS INSTALLATION
+on AWS on linux
+create n instance
+t2.medium
+all traffic(security grps)
+open putty login
+#sudo su
+#yum install java* -y (java prerequisite for jenkins)
+on google type jenkin downloads
+go to first link => choose redhat platform => copy link
+# yum install -y hyyps://pkg....paste the link
+#systemctl start jenkins
+#systemctl enable jenkins
+#systemctl status jenkins
+
+grab the public ip of ec2 and paste it on webbrowser :8080
+now unlock jenkins
+/var/lib/jenkins/secrets/initialAdminPassword
+
+#cat /var/lib/jenkins/secrets/initialAdminPassword
+paste the passwd
+.now install suggestd plugins
+.create admin user
+.jenkins is ready
+
+3.INSTALLATION on WINDOWS
+
+lanch windows EC2 on AWS
+on google
+java download windows
+click on firrst link run setup and install
+
+jenkins download
+choose windows platform
+download and run
+copy public ip paste it on browser with :8080
+unlock jenkins c:\programfiles x86\jenkins\secrets\initialadminpassword
+
+4. INSTALLATION ON DOCKER
+what industries do is take high configuration servers and install doctor package.
+make a container and install jenkins..like this end number of containers
+
+create a instance on aws
+#sudo su
+#cd
+#yum install docker* -y
+#systemctl start docker
+#systemctl enable docker
+#docker container ls (no container is there)
+#docker container run -itd -p 8081:8080 jenkins
+ (8081=docker host port 8080=jenkins port jenkins=latest image utha lega)
+#docker container ls (it will show a container in which jenkins is running)
+now how to access it
+grab the public ip , post it on webbrowser with 8081 as we mapped it to 8081
+3.215.77.219:8081
+#now unlock jenkins /var/jenkins_home/secrets/initialAdminPasswd
+but first u have to go inside docker container then go to that path
+#docker container exec -it eacaa6a0a580 /bin/bash      (eacaa container id)
+#cd /var/jenkins_home/secrets/ (now go to the path)
+#cat initialAdminPasswd
+paste it on cosole ...create username password
+
+5.HOW TO INTEGRATE GITHUB WITH JENKINS
+
+Developer pushed the code to github repository. To build the code we use jenkins server.
+We create a job and mention the url of github repository. Now jenkins know from where
+to pick up the source code.
+Number of ways to start job
+1.Manual-click on buildnow(inside jenkin server in the dashboard0
+2.Trigger- it builds remotely (triggering from ur local machine)
+3.Build after other projects r built (job1 will trigger job2 after built succes)
+4.Build Periodically (on the basis of time like ever 5mins )
+5.Poll SCM (every five minutes it will check if new code has been pushed or not. if
+there is new commit it will pull code and run the job)
+6.Git hub hook trigger for GITscm polling (whenever devloper commit n push the code)
+
+
+copy ip and port of jenkins 19.22.121.12:8080 ..go in git repository and then
+settings=>webhook=>add webhook
+Payload url- https://34.203.75.12:8080/github-webhook/
+content type- application/json
+secret-(token)paste the token
+add webhook              
+go to jenkins profile cloudknoweledge=>configure=>add token then generate token
+
+now create job on jenkins
+#new item
+enter a name-firstjob
+freestyle project okk
+#source code management
+choose Git, paste repository url (it will throw an error .. as server should have 
+git package)
+#click on the build now to build manually, click console output to see output
+#click on the git hook whenever develop commit smthing job will run
+
+6. 10:18 DEVOPS PROJECT with ANSIBLE PART
+developer server, github , jenkinsserver, ansible-serevr , web server
+password less connection b/w jenkins n ansible...ansible n webserver
+
+create 4 ec2 server on aws.
+1> Ready jenkins server
+connect through putty and then install java
+#yum install java* -y
+#wget -o /etc/yum.repos.d...........repo (search jenkins download on google)
+#rpm --import https://pkg.jenkins.io.......key
+#yum install jenkins
+#systemctl start jenkins
+#systemctl enable jenkins
+on browser paste ip:8080 .. paste password n setup jenkins
+
+2> ready ansible server
+#yum install ansible
+#vim /etc/ansible/hosts [enter host details]
+[web]
+172.31.38.216
+:wq!
+after setting up webserver now making passwd less connection
+#ssh-keygen
+#ssh-copy-id -i root@[private ipof webserver]
+it will throw error.... chnages to be made on sshd conf file
+[on webserver]
+#passwd root
+#vim /etc/ssh/sshd_config
+permit root login (uncomment this)
+PasswordAuthentication Yes (make it yes)
+:wq!
+#systemctl restart sshd
+
+[on ansible server again]
+#ssh-copy-id -i root@{webserver private ip}
+it will prompt passwd for first time
+now if we do ssh@private ip webserver ..it will not ask passwd
+
+3> now settting up web server
+sudo su
+#yum install httpd
+#systemctl start httpd
+#systemctl enable httpd
+
+4> setting passwdless between jenkins and ansible
+#ssh-keygen
+#ssh-copy-id -i @root[private ip ansible]
+------------------
+on ansibleserver
+#passwd root
+#vim /etc/ssh/sshd_config
+permit root login (uncomment this)
+PasswordAuthentication Yes (make it yes)
+:wq!
+#systemctl restart sshd
+-------------
+now do ssh-copy-id it will work
+
+5> setting playbook on ansible
+#mkdir /sourcecode
+#cd /sourcecode
+#vim playbook.yml
+- hosts: all
+  tasks:
+     - copy:
+          src: /opt/index.html
+          dest: /var/www/html
+
+6> creating repo on github
+demo-project
+create file => index.html
+1.welcome to india
+
+integrate github with jenkins with webhooks
+payload URL
+http://54.91.59.112:8080/github-webhook/
+content type 
+application/json
+now generate token on jenkins profile copy and paste it here
+add webhook
+------------
+now install 'public over ssh' plugins as jenkins will provide built file to ansible
+via this
+manage jenkins=>manage plugins=> public over ssh
+-------------------
+create job - demo project- freestyle
+source code management-git-pasting the repository url..but it will throw error
+so to rectify install git on jenkins server
+#yum install git* -y
+#yum install git 
+now there will be no error
+-------------------------
+now in 'build' choose 'send file or execute command over ssh'..but it will ask ssh server
+now go to manage jenkins=configure system=choose 'add ssh server at the bottom'
+name-jenkins
+hostname- private ip of jenkin
+username- root
+click on advanced and choose passwd authentication and give passwd=applysave(remeber to set 
+passwd on jenkins btw
+#passwd root
+#vim /etc/ssh/sshd_config
+permit root login
+passwd authenticaiton yes
+#systemctl restart sshd)
+
+now go inside demo project=configure=build=send file execute cmd over ssh
+SSH Servers= 
+name= jenkins
+exec cmd= rsync -avh /var/lib/jenkins/workspace/demo-project/*.html root@[ansible privateip]:/opt/index.html
+apply=save
+--------------------------
+now defining the file to send to webserver from ansible..through 'post build action'
+ab sending post build artifact through ssh... but u have to authenticate ansible server
+on ssh server
+now go to manage jenkins=configure system=choose 'add ssh server at the bottom'
+name-ansible
+hostname- private ip of ansible
+username- root
+click on advanced and choose passwd authentication and give passwd=applysave
+---------- now go inside demo project=configure=post build actions=send build artifacts over ssh
+name=ansible
+exec command=ansible-playbook /sourcecode/playbook.yml
+-----------
+build the job,,, and post ip of webserver on browser to see result
+
+
+now main thing.... access developer machine
+#sudo su 
+#cd
+#yum install git
+#git clone httpds:paste repo url
+#cd demo-project
+#vim index.html
+ add a line
+:wq!
+#git commit -m "ah" index.html
+#git push origin master
+
+(jenkins=demo-project=configure=enable github hook scm polling)
+again edit and push the code it will automatically build and reflect in webbrowser
+
+================================================================================
+7. DEVOPS PROJECT WITH DOCKER
+developer=github=jenkins=ansible=docker-host
+
+launch 3 servers on aws Jenkins,Ansible,Docker-host
+on jenkins server
+#yum install java* -y
+search jenkins download on google
+paste the link
+#yum install jenkins
+#sysytemctl start jenkins
+#systemctl enable jenkins
+#yum install git* -y
+paste public ip:8080 on browser and set jenkins
+---------------
+on ansible server
+#sudo su
+#yum install ansible -y
+#vim /etc/ansible/hosts
+[dockerhost]
+private ip
+#ssh-keygen
+#ssh-copy-id -i root@{dockerhostprivateip}
+
+
+#yum install docker
+#systemctl start docker
+#systemctl enable docker
+----------------
+But on docker server
+#sudo su
+#passwd root
+#vim /etc/ssh/sshd_config
+permeit root login (uncomment)
+passwd authentication yes
+#systemctl restart sshd
+
+#yum install docker -y
+#systemctl start docker
+#systemctl enable docker
+----------------
+
+making jenkins and ansible passwd less
+on jenkins
+#ssh-keygen
+#ssh-copy-id -i root@{ansibleprivateip} (on ansible server set root paswd
+vim /etc/ssh/sshd_config permit root login passwd authenticatioin yes
+systemctl restart sshd) 
+
+
+we have to authenticate both the ansible and jenkins servers on jenkins
+for doing command exec n post build exec...therefore we 
+have install the plugin 'public over ssh'
+Manage jenkins=manage plugins=public over ssh
+              =configuration sysytem= SSH servers at the bottom
+               Name=Jenkins
+               Hostname=private ip
+               Username=root
+               advanced= passwd authentication (set root passwd on server btw edit sshd_config
+and restart sshd daemon)
+                Name=Ansible
+               Hostname=private ip
+               Username=root
+               advanced= passwd authentication 
+
+integrating Github with jenkins
+creating a repository- cloudknowledge
+create a Dockerfile
+FROM centos:latest
+MAINTAINER sanjay.dahiya332@gmail.com
+RUN yum install -y httpd\
+      zip\
+     unzip
+ADD https://www.free-css.com/assets/files/free-css-templates/download/page247/kindle.zip /var/www/html
+WORKDIR /var/www/html
+RUN unzip kindle.zip
+RUN cp -rvf markups-kindle/*
+RUN rm -rf _MACOS markups-kindle kindle.zip
+CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
+EXPOSE 80
+
+now commit, then go in settings = add webhook=
+                                   payload url= http://34.207.121.253:8080/github-webhook/
+                                   content type=application jason
+                                   token= paste token
+----------------------------
+now create job (new item 'cloudknowledge-job' freestyle project)
+source code management=Git= paste repository url
+Build environment=build=send files or execute cmds over ssh
+Name= jenkins
+exec cmds= rsync -avh /var/lib/jenkins/workspace/cloudknowledge-job/Dockerfile root@{ansible privateip}:/opt
+
+
+
+
+name=Ansible
+exec cmds= cd /opt
+           docker image build -t $JOB_NAME:v1.$BUILD_ID .
+           docker image tag $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:v1.$BUILD_ID
+           docker image tag $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:latest
+           docker image push sd171991/$JOB_NAME:v1.$BUILD_ID
+           docker image push sd171991/$JOB_NAME:latest
+           docker image rmi $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:latest
+
+[mandatory to login docker on ansible server
+#docker login]
+also we have to make a playbook on ansible that will deploy the conatiner on docker host
+#mkdir /sourcecode
+#cd /sourcecode
+#vim docker.yml
+ - hosts: all
+   tasks:
+      - name: create container
+        shell: docker container run -itd --name cloudknowledge-container -p 9000:80 sd171991/cloudknowledge-job
+------------
+post build: send artifacts over ssh 
+name- ssh
+exec command- ansible-playbook /sourcecode/docker.yml
+
+now build the job=then on docker host verfify this comand
+#docker container ls (list of containers)
+#docker image ls (latest wali image uthata hai ye)
+on docker hub u will see two images pushed (one v1.1 and other latest)
+now on browser paste public ip of docker-host 100.25.223.181:9000 (ur application runs)
+--------------
+make changes in git hub file
+#change the link
+unzip photogenic
+cp -rvf photogenic/* .
+rm -rf photogenic photogenic.zip 
+
+also select github hook trigger for gitscm poling....build the job..it will fail 
+because playbook wont run and it wont run because the container is running already.so 
+
+#vim docker.yml
+ - hosts: all
+   tasks:
+      - name: stop container
+        shell: docker container stop cloudknowledge-container
+      - name: remove container
+        shell: docker container rm cloudknowledge-container
+      - name: remove docker image
+        shell: docker image rm sd171991/cloudknowledge-job
+       
+      - name: create container
+        shell: docker container run -itd --name cloudknowledge-container -p 9000:80 sd171991/cloudknowledge-job
+
+9. CI AND CD JOBS
+seperate jobs for continuous integration nd for continous deployment
+
+
+developer 1,2,3 => github => jenkins (continuous integration)
+                                  ||
+production (kubes cluster)<= ansible  (continuous deployment)
+
+go to new items=create job 'ci' (freestyle project)
+source code management=choose Git=Repository url
+select github hook poll scm
+build=send files or execute commands over ssh
+ Name- Jenkins
+ execcommands- rsync -avh /var/lib/jenkins/workspace/ci/* root@[ansibleprivateip]:/opt
+
+post buil=send build artifacts over ssh
+ Name- Ansible
+exec cmds-  cd /opt
+           docker image build -t $JOB_NAME:v1.$BUILD_ID .
+           docker image tag $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:v1.$BUILD_ID
+           docker image tag $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:latest
+           docker image push sd171991/$JOB_NAME:v1.$BUILD_ID
+           docker image push sd171991/$JOB_NAME:latest
+           docker image rmi $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:latest
+
+apply save
+-----------------------------------
+New item-CD freestyle
+Build Triggers
+ -build after other projects are built= CI ..when the build is stable
+add post build actions
+ send build artifacts over ssh
+name- ansible
+exec cmd- ansible-playbook /opt/ansible.yml
+
+build job
+
+-----------------------------------
+10. Jenkins pipeline with groovy scipt scirted & declarative
+1st method- pipeline plugins
+2nd method- groovy script
+
+in pipeline script u have to build so many jobs and its tuff to manage plugins
+in groovy script one job but inside that various stages are there
+JOB1 pipeline= stage1 build , stage-2 test , stage3 qa, stage4 deploy
+
+another benifit is scripted... write the code, push in github..remove stages , add stages etc..
+
+on pipeline plugins you cant skip a job(which is not important) in pippline. you have to remove the parameter.
+but on groovy it is possible
+
+in pipeline if job 4 failed then u have to make it correct and it will again run from brginning job1
+but on groovy script only the remaining job will run..it has a functionality to restart job4
+
+on groovy script suit of plugins automatically is taken by itself
+
+running job on the basis of configuration of system, condiotiions,loop is not available on pipeline
+whereas on groovvy script it is possible
+
+on pipeline u cannot distribute the load between master and slave jenkin agents
+whereas on groovy script you can
+
+groovy script are of two types
+scripted pipeline/declarative pipeline
+
+scripted pipeline syntax
+node{
+    stage('build'){
+    echo "welcome to build stage"
+    }
+
+    stage('Test'){
+    echo "welcome to Test stage"
+    }
+
+    stage('QA'){
+    echo "welcome to QA stage"
+    }
+}
+
+
+Declarative ppipeline syntax
+
+pipeline{
+        agent any
+        stages{
+              stage('build'){
+              steps{
+                echo "welcome to build stage"
+              }
+          }
+
+              stage('Test'){
+              steps{
+                echo "Welcome to test stage"
+}
+}
+       }
+}
+
+skipping, loop condition, restart, github n local machine access
+it doesnot waste ur time if a single mistake is there the whole script wont run
+
+
+
+
+11.Scripted PIPELINE LAB
+launch 2 machines (jenkins and docker host)
+create new item scripted-pipeline-demo, select pipeline
+Now go to pipeline , there you write script
+click on the 'pipeline syntax' to select git and parameter to create script and paste above
+
+
+node{
+    stage('Pull Source code from github'){
+       git 'https://github.com/sanjaydahiya332/cloudknowledge.git'
+    }
+
+    stage("Build Docker File"){
+    sh  'docker image build -t $JOB_NAME:v1.$BUILD_ID .'
+    sh  'docker image tag $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:v1.$BUILD_ID'
+    sh  'docker image tag $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:latest'    
+ }
+
+    stage('Push  image to docker hub'){
+    sh  docker image push sd171991/$JOB_NAME:v1.$BUILD_ID
+    sh  docker image push sd171991/$JOB_NAME:latest
+    sh  docker image rmi $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:v1.$BUILD_ID sd171
+}
+    }
+    
+   
+
+    }
+}
+
+If u build the job it will throw error..as there is no package of docker on jenkin server
+#yum install docker -y
+#systemctl start docker
+#systemctl enable docker
+
+again build the job ..(fail because /var/run/docker.sock file has no permission to jenkins)
+#chmod 777 /var/run/docker.sock
+
+build again
+
+
+
+to push image to docker hub..first u have to login docker hub..for that go in th
+pipeline syntax=choose withcredentials:bind credentials to variables=add=secret text=
+variable=dockerhubpassword then click on add and select jenkins 
+secret= ********** put docker passwd here, give id description as dockerhubpasswd
+
+now generate pipeline script......now copy n paste
+
+
+ stage('Push  image to docker hub'){
+     withCredentials({string(credentialsID: 'dockerhubpassword', variable: 'docker
+  // some block
+  sh 'docker login -u sd171991 -p ${dockerhubpassword}'
+  sh 'docker image push sd171991/$JOB_NAME:v1.$BUILD_ID'
+  sh 'docker image push sd171991/$JOB_NAME:latest'
+  sh 'docker image rmi $JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:v1.$BUILD_ID sd171991/$JOB_NAME:latest'
+}
+    }
+  stage("Deployment of Docker container"){
+     def dockerrun = 'docker run -p 8000:80 -d --name cloudknowledges sd171991/scripted-pipeline-demo:latest'
+     def dockerrm = 'docker container rm -f cloudknowledges'
+     def dockerimagerm = 'docker image rmi sd171991/scripted-pipeline-demo'
+     sshagent(['dockerhostpassword']) {
+   // some block
+      sh "ssh -o stricthostkeychecking=no ec2-user@privateip ${dockerrm}"
+      sh "ssh -o stricthostkeychecking=no ec2-user@privateip ${dockerimagerm}"
+      sh "ssh -o stricthostkeychecking=no ec2-user@privateip ${dockerrun}"
+
+}
+
+}
+
+Add plugins=ssh agent (for deployment its needed)
+pipeline syntex=ssh agent=add=jenkins=ssh username with private key
+username=ec2-user
+key=ppk copy paste 
+add
+generate pipline script, copy and paste in script
+
+
+also install docker package on docker host start  n enable service
+chmod 777 /var/run/docker.sock
+docker container ls
+
+if u build now it will workkkk..
+---------------
+now change the sourcecode on git hub and commit,.... now build the job it will fail
+as the container already exist.......so we have to put the delete command in it
+and also the image because it is always deploy the image in the machine..not the latest from hub
+so he has to delete it first
+
+webhook set for automating

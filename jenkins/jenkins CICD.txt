@@ -1,0 +1,154 @@
+
+1.Install and Setup Java environment
+
+- Oracle Java Installation (in Google) (choose Oracle Technology
+Network)
+
+° Accept License Agreement
+
+- Download Windows x64 installer & Run
+
+- Go to EnvironmentVariables
+
+- In Environment Variables(both user variables & system) (JAVA_LHOME &
+JDK installed path)
+
+- java -version (in cmd) (if unable to see, restart PC)
+
+
+---------------------------------------------
+Download Jenkins
+- Jenkins Installer (In google)
+° Downloads
+° Long—term Support
+- Download Generic java Package (.war)
+-----------------------------------------------
+Install Tomcat
+-Tomcat installer windows (In Google)
+- apache.tomcat...cgi(link)
+- Binary Distributions-core-Windows Service Installer & Run
+- username & password - admin (Tomcat default port is 8080) 
+- localhost:8080 (to verify)
+- Manager App - admin & admin ‘93
+- You can see apps come with tomcat by default
+- All these apps installed in Program ﬁles-ApacheSoftwareFoundation-Tomcat-
+webapps (this is where we are going to deploy jenkins war file)
+
+--------------------------------------------------
+Install Jenkins as a Webapp in Tomcat
+- Create JENKINSHOME folder in C:\ drive
+
+- Go to Env variable, set system variable (JENKINS_HOME & path of (inside) JENKINSHOME)
+
+- In cmd, echo %]ENKINS_HOME% (can see IENKINSHOME) If not, restart PC(mandatory)
+
+- Copy the jenkins.war file that you downloaded to this tomcat webapps folder & start tomcat service
+(you can see jenkins folder got created) (start Jenkins in tomcat browser)
+
+- In browser, localhost:8080/jenkins, (can see jenkins page) & give initial admin password which is in
+JENKINSHOME folder. (If unable to see jenldns page, start Jenkins in tomcat & restart PC)
+
+- Select plugins to install - none - install - admin.
+
+----------------------------------------------------------
+
+ANT Installation
+
+- Download apache ANT
+- (ant.apache.org/bindownload.cgi)
+- Download bin.zip & unzip(l.9.9) & copy ANT folder in c:\ drive)
+- Environment variables(in user variables) (ANT_HOME & ant downloaded path)
+- System variables—in path, (ant’s bin directory downloaded path)
+- restart & ant -version & echo %ANT_HOME% (in cmd) (if unable. then restart
+PC(mandatory))
+
+----------------------------------
+Clone Sample Java Code 
+
+- Create GitWorkspace folder in c:\
+° inside GitWorkspace - git Clone
+
+https://github.con/SaiDevOpsFaculty/SampleWebApp.git (in cmd)
+--------------------------------------
+Continues Integration (create a job to poll from Github)
+
+-Manage jenkins-manage plugins-GitHub-Install without restart 
+- New job-GithubPull-Free style project-OK
+- GithubPull - configure - General -Advanced - UseCustomWorkspace-
+${]ENKINS_HOME}/workspace/SampleWebApp
+-Source Code Management - Git - Copy the down HTTP url of SampleWebApp
+repo - uncheck pollscm-save
+------------------------------------------
+Continues Building :Build, Code review and Publish
+results
+
+- Manage Jenkins - manage plugins - checkstyle & Ant plugin - Install without restart
+- NewItem-BuildandCodeReview-FreeStyleProject - OK
+- General - Advanced — UseCustomWorkspace-
+${JENKINS_HOME}/workspaoe/Samp1eWebApp
+- Sourcecode management - git - paste the url(down) of samplewebapp from github
+' Build-lnvokeANT—Targets - checkstyle
+' PostBuildActions — PublishCheckstyleAnalysisResults— checkstyle_errors.xml — save
+
+--------------------------------------------
+Continuous Testing: Run tests and Publish Junit test reports
+° Install JUnit Realtime Test Reporter plugin
+-NewItem-UnitTest-ﬁeeswle-Ok
+- General-Advanced—UseCustomWorkspace-${JENKINS_HOME}/workspace/SampleWebApp
+- Sourcecode Management-git- paste the url(down) of SampleWebApp from github
+' Build-InvokeANT-junit
+- Post build Actions- PublishJunitTestREsultReport- TestCalculator_JunitResult.xml -save
+-----------------------------------------------
+Set Up New Deployment Server (Tomcat)
+- Go to Tomcat/conf/serverxml
+  ' Connector port"8090"
+- Go to Tomcat/conf/tomcat-users.xml
+<user username="admin" password="admin" roles="manager-gui,manager-script,admin" />
+--------------------------------------------------
+Continuous Deployment: Deploy code to production environment
+
+- Install Deploy to container plugin 
+- Newitem-Deploy-Freestyle-Ok
+- Genenl-Advanced-UseCustomWorkspace-
+${IENKINS_HOME}/workspaoe/SampleWebApp
+. git-paste the url of samplewebapp repo
+. Build-InvokeAnt-Target-war
+. PostBuildActions-DeployWar/Ear to container (WAR/EAR ﬁles - **/*.war & Context path -
+samplewebapp-addcontamer-Tomcat8.x-adrnin-admin-(cmdential:admin) -
+http://localhost:8090 - save
+. Tomcat8.exe (stop & start tomcat service) to start tomcat
+--------------------------------------------------------------
+CI CD Build Pipeline  
+
+
+- Install Build pipeline Plugin 
+
+- Go to GithubPull-configure-PostbildAciton
+  BuildOtherProjects-codeReview-save
+
+- Go to BuildanCodeReview Job-configure-postbuildAction-buildOtherProjects-unitTest-save
+
+- Go to UnitTest Job-conﬁgure—postbuildAction-buildOtherProjects-Deploy-save
+
+- Click on + - Complete_Pipeline—BuildPipeLineView—ok-Selectlnitialjob-GithubPu11-Ok
+
+- Go to GithubPull-configure-PollSCM- * * * * (can see all jobs in a pipe line View
+
+automatically being build)
+- localhost:8090/samplewebapp
+- Can see web page is loading
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

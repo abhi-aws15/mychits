@@ -1,0 +1,113 @@
+grep root /etc/passwd
+
+view top few lines of passwd
+head /etc/passwd
+head -3 /etc/passwd
+
+view bottom lines
+tail -2 /etc/passwd
+
+hostname -i
+cat /etc/os-release
+
+find command
+find -type f
+find -type d
+find / -type f -name passwd
+find / -type d -name diry
+
+user manangement
+useradd raj  (cat /etc/passwd to verify)
+groupadd devops 
+gpasswd -a raj devops (place raj in group)
+gpasswd -M raj,sai,hari devops (add multiple users in group)
+gpasswd -d raj devops (remove)
+userdel 
+groupdel
+
+softlink n hardlink
+ln -s file1 softfile1
+ln file4 hardfile4
+
+tar -cvf dir1.tar dir1
+gzip dir1.tar
+
+gunzip dir1.tar.gz
+tar -xvf dir1.tar
+
+command to change permission
+chmod 777 dir1
+chmod 666 file1
+chmod 744 ..
+
+To change owner
+chown raj file1
+
+To change group
+chgrp devops file1
+
+To check size
+du -h dir1
+------------------------
+setfacl -m u:natasha:r-- /file
+getfacl /file
+setfacl -x u:harry: /file (remove acl)
+setfacl -b /india  (sab hat jayenge)
+
+Partition Manangement
+---------------------
+fdisk -l 
+lsblk
+fdisk /dev/sdb
+ m>n>p>1 first sector 2048 sixe:+1G P(Print table)
+ w
+ partprobe (kernal should know)
+fdisk -l
+lsblk                 to verify
+blkid (agr partition nahi aaya to filesystem assigned anhi hai)
+mkfs -t ext2 /dev/sdb1
+mkdir /partio1
+mount /dev/sdb1 /partio1
+df -h (to verify)
+umount /partion1 (to unmount)
+vim /etc/fstab 
+ /dev/sdb1 /partio1 ect2 defaults 0 0
+mount -a 
+df -h
+----------------
+LVM
+
+pvcreate -v /dev/sdb
+pvdisplay /dev/sdb
+pvs
+pvcreate /dev/sdc
+pvcreate /dev/sdd
+
+vgcreate volumecontaainer /dev/sdb /dev/sdc
+vgs (verify)
+pvs (2 hdd addedd to vg)
+vgextend volumecontainer /dev/sdd
+
+lvcreate -L 12G -n mylv volumecontainer
+lvs (verify)
+
+mkfs -t ext4 /dev/volumecontainer/mylv
+blkid (to verify)
+mkdir /lv1
+vim /etc/fstab
+ /dev/volumecontainer/mylv /lv1 ext4 defaults 0 0
+mount -a
+df -h (to verify)
+
+lvextend -L +3G /dev/volumecontainer/mylv
+resize2fs /dev/volumecontainer/mylv
+df -h
+lvreduce -L -7G -r /dev/volumecontainer/mylv
+lvresize -L 25G -r /dev/volumecontainer/mylv 
+------
+vgreduce volumecontainer /dev/sdc
+vgcreate -S 16M myvg /dev/sdc
+vgdisplay myvg
+  you can see PE=16MB
+lvcreate -l 32 -n mylvm myvg
+lvdisplay /dev/myvg/mylvm

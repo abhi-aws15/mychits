@@ -1,0 +1,517 @@
+1. Version control system
+suppose u have a pc. There is a folder named common. There is a file 
+"abc.txt" in it. abc.txt content is 'hello india'.
+after a few days i changed the content of abc.txt 'hello azure'.
+but i need the old content that i cannot now.
+
+old solution was copy that file in other location then change it.. in
+this way we can retrieve the data whenever we need. Its impossible to 
+always make copy of the file whenever making any changes.
+================
+therrefore version control concept came into market.
+After configuring version control system in the server.. it will automatically
+maintain the version of the file.(the time , the content the version 
+of everything is kept). THere is no chances of overwrite. 
+
+git - 1991 linus Torwalds - linux kernel 
+
+2. Git & GitHub work flow
+Git server
+Git client
+Repository
+    - Centralized repositoory
+    - local repository
+push
+pull
+branch
+
+all the devlopers write their and code maintaining version..they push to one centralised
+ machine. all the developers are git client and the main one is git server
+
+the folder in which versioning is enabled  we call it as repository. normal folder wont
+maintain versioning
+
+3. How to setup on premises git server
+on both master and node
+#yum install git
+
+on master 
+#mkdir /project
+#cd /project
+#git init --bare (initialize empty git repository)
+#ls
+
+on node
+#mkdir /dev-1
+#cd /dev-1
+#git init
+#vim code
+welcome to india
+:wq!
+#git status( it wil show file is untracked)
+#git add code (now it is added in staging area)
+#git commit -m "first-time" code
+
+#git config --global user.email "sai4cs@gmail.com"
+#git config --global user.name "abhi"
+
+#git remote add origin root@192.168.177.128:/project
+#git push origin master
+now it will prompt passwd but the server hasnt provided passwd to cllient
+
+now server admin will ask to create key and ask for id_rsa.pub file
+
+#cd .ssh
+#cat id_rsa.pub
+copy the content and make .ssh on master and paste it
+#mkdir .ssh
+#cd .ssh
+#vim authorized_keys
+paste the content
+:wwq!
+
+
+now node can push
+#cd /dev-1
+#git push origin master
+
+to verify go to master
+#git log
+#git show
+===========================
+appending the file
+#vim code
+welcome to india
+welcome to awscloud
+:wq!
+#git commit -m "second-time" code
+#git push origin master
+
+verify on master
+=============================
+git node 2
+#yum install git
+#mkdir /dev-2
+#cd /dev-2
+#git init
+now to pull
+#git clone root@192.168.177.128:/project
+
+create keygen and copy to master
+
+
+5.How to resolve merge conflict error
+on master
+#mkdir /project
+#cd /project
+#git init --bare
+
+on node 
+#mkdir /devloper1
+#cd /devloper1
+#git init
+#vim index.html
+welcome to india
+:wq!
+#git add index .html
+#git commit -m "f1" index.html
+#git config --global user.email "yu@gmail.com"
+#git config --global user.name "your name"
+now commit
+#git log (to see commit)
+#git remote add origin root@192.168.1.6:/project
+#git push origin master
+
+now node 2
+#yum install git -y
+#mkdir /developer2
+#cd /developer2
+#git clone root@192.168.1.6:/project
+#cd /project
+#vim index.html
+ welcom to india
+ welcm to azure cloud
+#git commit -m "edit by dev2" index.html
+#git config --global user.email "ghad@gmail.com"
+#git config --global user.name "your name"
+now commit it
+#git push origin master
+
+now node 1
+#git pull origin master
+#vi index.html
+welcome to india
+welcome to azure
+welcome to ali baba cloud
+:wq!
+#git commit -m "f2" index.html
+#git push origin master
+
+now in node2
+#git pull origin master
+#vim index.html
+welcome to india
+welcome to azure
+welcome to ali baba cloud
+welcom to ansible
+#git commit -m "edit from dev2 secnd time" index.html
+#git push origin master
+
+now in node 1
+#git pull origin master
+#vim index.html
+#git commit -m "f3" index.html
+#git push origin master
+
+now node 2
+#git pull origin master
+#vim index.html
+ add new line
+#git commit -m "edit by developer2 3rd time" index.html
+#git push origin master
+
+now conflict factor
+in node1 he didnt pull
+#vim index.html
+#git commit -m "f4" index.html
+#git push origin master (it will fail)
+#git pull origin master(first pull)
+conflict occurs because he edited the file..now he has to fix the conflict which
+content should be at top or keep both
+#git commit -m "f5" index.html (it will not work)
+#git commit -a
+#git push origin master
+
+6.GIT LOG COMMAND
+#git log --all (show all commits)
+#git log -3 (last 3 commit)
+#git log --author=developer1 (see commit by author)
+#git log --commiter devlopeer1
+#git log --before "2020-04-11" (by date)
+#git log --after "2020-04-10" --before "2020-04-30"
+#git log --grep="m9" (by commit message)
+#git log -G"india" (by content line/words/code)
+#git log -p (show details of all commit)
+#git log --state (shows how many lines added or removed)
+#git log --oneline
+#git log --graph
+#git help log (details of log)
+
+7.GIT BRANCH
+see the video just a lecture
+
+8.GIT Branch practical
+1git server 2 nodes(dev1 dev2)
+
+on master
+#mkdir /roject
+cd /project
+git init --bare
+ls
+
+on node1
+#mkdir /developer1
+#cd developer1
+#git clone root@192.168.1.8:/project
+#cd project
+#git branch(no branch available)
+#vim index.html
+ welcome to software1
+:wq!
+#git add index.html
+#git commit -m "first" index.html
+#git branch (it will show master branch)
+#git push origin master
+
+now check on master node (git branch u will see master branch)
+
+now in node2
+#mkdir developer2
+#cd developer2
+#git clone root@192.168.1.8:/project
+#cd project
+#ls
+#git branch (u will see master branch)
+now he will start working
+#vim index.html
+welcome to software verrsion1
+welcome to software version2
+:wq!
+#git add index.html
+#git commit -m "seconf" index.html
+#git push origin master
+
+both of them arein master
+
+now creating new branch in master machine..the nodes will fetch it
+#git branch (show your branches)
+#git branch staging (staging=new branch)
+when u make a new branch everything curently available in master branch will come
+by deafault in new branch
+#git log staging (to check commits)
+
+
+now on node1
+#git fetch (fetching branch from gitserver)
+#git branch -a (to check all remote branches)
+#git checkout staging (to switch branch)
+#git branch (u will be sitting in staging)
+#vim var1.html
+ welcom to soft1
+#git add var1.html
+#git commit -m "first commit from dev1" var1.html
+#git log
+#git push origin staging
+
+(now #git log staging on gitserver to verify )
+merging in git server
+#mkdir operation
+#cd operation
+#git clone root@[ip of gitserver]:/project
+#cd project
+#git branch -a
+#git checkout staging
+#git checkout master
+#git merge staging (when u r sitting in master)
+#git log (u will see all commits)
+#git push origin master (to finalize the merge in the remote repository, as the "operation"
+thing is done locally)
+#git log (to verify)
+
+now in node 2 (doing same thing)
+#git fetch
+#git branch -a 
+#git checkout staging
+#ls
+#vim var1.html
+ welcome to soft1
+ welcome to soft2
+#git add var1.html
+#git commit -m "dev2" var1.html
+#git push origin staging
+
+now in gitserver logs will be available in staging..but to merger maintainer will go in
+ operation folder and check the logs sitting in staging but he will not see
+#git pull origin staging (now he will see the changes by dev2)
+#git checkout master (to go in master from staging)
+#git merge staging
+#git push origin master (as everything was locally on a operation folder)
+
+==============================
+in node 1
+#git branch devloper1
+#git checkout devloper1
+#vim vlc.html
+welcome to vlc soft v.1.1
+#git add vlc.html
+#git commit -m "vlc1 dev1" vlc.html
+#git push origin devloper1
+
+[verify in git server #git branch #git log developer1]
+
+----------------------
+now work of maintainer to merger...
+firstly he will do it locally (in operations..in projects)
+#git branch -a ()remote branches will show)
+#git fetch
+#git branch -a (he can see all branches)
+#gitcheckout developer1
+#git checkout staging
+#git merge developer1(sitting in staging)
+#git push origin to staging (pushinh to remote repository)
+
+#git checkout master
+#git merge staging   (finally merging to master)
+#git push origin master (finally updating remote repository )
+
+same tasks with node2>>>and then maintainer will do the same job with merging (46 mins vid)
+====================
+on node 2
+#mv vlc2.html vlc1.html
+(as both devloper1 and devlop2 as same file name..during merge conflict occurs)
+#vim vlc1.html
+welcome to vlc 1
+welcome to vlc 2...
+#git add vlc1.html
+#git commit -m "v1" vlc1.html
+#git push origin developer2
+
+on node1
+#vim vlc1.html
+welcom to vlc soft 1
+welcm to vlc soft 2
+#git add vlc1.html
+#git commit -m "v2" vlc1.html
+#git push origin developer1
+
+git maintainer
+#git branch
+#git checkout developer1
+#git log (he cant see latest commit)
+#git pull origin developer1
+#git log (he can see latest now)
+#git checkout staging
+#git merge developer1 (merging automatically)
+#git push origin staging (update remote repository)
+#git checkout master
+#git merge staging
+#git push origin master (final merger,job will run)
+
+
+#git checkout developer2
+#git log (cant see)
+#git pull origin developer2
+#git log (can see)
+#git checkout staging
+ #git merge developer2 (conflict occurs)
+
+#vim vlc1.html
+ keeping all the lines and save it
+#git commit -a (to generate a commit regarding resolving conflict & merging develop2 into staging)
+#gti push origin staging
+#git checkout master
+#git merge staging
+#git push origin master
+----------------------------------------------
+git branch -D developer1 (delete branch)
+#git push origin --delete developer1  (deleteing remote repositories)
+
+9. GIT reset and reset type
+reseting the commits
+
+soft , hard , mixed
+
+soft - data will not loose ..commit id will gone
+hard- data and commit id boh will be gone
+mixed- file will be in untracked area
+
+#mkdir project
+#cd project
+#vim index.html
+welcome to soft1
+#git add index.html
+#git commit -m "v1" index.html
+
+#vim index.html
+welcome to soft1
+welcome to soft2
+#git commit -m "v2" index.html
+#vim index.html
+welcome to soft1
+welcome to soft2
+welcome to soft3
+#git commit -m "v3" index.html
+
+#git reset --soft 7690572......... (v2's commit id , v3 v4 will be gone)
+#git status -s (but it stays modified[tracked] means not untracked)
+data remains intact in this process
+
+#git commit -m "v2" index.html (too many commits was bothering ..so a single cmit is nice)
+----------
+#git reset --hard ald.....(v1 commit id) 
+#git status
+working directory clean, data lost
+----------------------------------------
+#git reset mixed a1d30...... (all commits after v1 will be removed)
+suppose 2 files...both have lots of commit .. applying mixed reset will clear all the commit
+but one file will be untracked(jisor nai kiya) and one will be modified (jispr mixed apply kiya)
+
+#git reset HEAD~2 two commits from top will be gone
+
+10.GIT STASH AND TAG
+supose you are working on a file index.html in staging branch ... now ypur boss asks to
+work you urgently on some other file on master branch.... then what will u do?
+u havent completed the work on staging u cant commit and push also.
+
+so if u just save the file ...now change the branch and do work on some other file,complete
+it addd it commit it. Now you come to your prevous branch and want to resume the file
+all data will be gone. so basically commit should be done to save before switching
+branch
+
+#mkdir /project
+#cd /projet
+#git init
+#vim index.html
+welcome to soft1
+welcome to soft2
+#git add index.html
+#git branch (no branches, first commit is necessary for creating mastr branch)
+#git commit -m "v1" index.html
+#git branch
+*master
+#vim index.html
+welcome to soft1
+welcome to soft2
+welcome to soft3
+welcome to soft4
+
+
+
+#git branch staging
+#git checkout staging
+#vim soft.html
+welcm to india
+#git add soft.html
+#git commit -m "second branch" soft.com
+
+now go to previous branch
+#git checkout mastr
+#vim index.html (data will be intact)
+
+now if we go to staging branch and edit the file index.html..and come back to mastr branch
+and check data will be lost
+#git checkout staging
+#vim index.html
+add lines
+#git add .
+#git commit -m "ff" index.html
+#git checkout master
+#vim index.html (u will see data loss)
+so before going to other branch stash it
+add some lines save it come out
+#git stash
+#git stash list (show all the list)
+#git stash show stash@{0} tocheck whats is wip in the current woring space
+
+now change the branch
+#git checkout staging
+#vim index.html
+delete add lines
+#git commit -m "v3" index.html
+#git checkout master
+#git stash pop stash@{0}
+file will be modified ... u will get back the current work in progress
+#vim index.html(data remains intact)
+#git commit -m "b3" index.html
+-------------------------
+#git log
+#git tag v1.1 (it will give tag to the last commit)
+#git show v1.1 (it will show the full details)
+
+vim index.html
+git commit -m "v2" index.html
+git tag v2.2
+git tag     (to see list)
+git show v2.2
+
+git tag -d v1.4 (delete tags)
+
+11. GIT HUB ACCOUNT
+public repository - 2000 action 500 mb
+team-3000 action 2GB $4
+private- Enterprise 50000 action 50gb $21
+
+#mkdir /india
+#cd /india
+#vim index.html
+welcome to soft1
+#git init
+#git add index.html
+#git commit -m "v1" index.html
+#git remote add origin https://github.com/cloud........
+#git push origin master
+usernamme
+passswd
+#
+on node 2
+#git clone https

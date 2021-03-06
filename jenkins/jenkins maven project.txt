@@ -1,0 +1,78 @@
+2 instance jenkins nd tomcat- open port in sg 22, 8080
+
+In jenkins server
+ - yum install java-1.8
+
+go in Ravdy DevopsDemos and check documentaion
+
+
+manage jenkins> Global tool configurtion
+ jdk
+      name-
+      JAVA_HOME = /usr/lib/jvm/java-1.8.0-openjdk-1.8.0252b09-2.amzn20.1xo39
+
+on jenkins server, install git and maven
+
+vi ~/.bash_profile
+ give the path
+source ~/.bash_profile
+
+
+manage jenkins> Global tool configurtion
+      name=
+      MAVEN_HOME /opt/apache-maven-3.6.3
+
+
+install plugins
+Git, Gitub , Maven integration, deploy to container, checkstyle, PMD , junit, findbugs, stsatic analysis collector
+
+
+on Tomcat server comment valve class name
+<!-- valve class name 0.0.0.1 -->
+add user in usr.xml 
+./startup.sh
+
+netstat -tulpn
+
+setup git path also
+------
+create job- maven project
+ git repo url
+ build triggers
+ build 
+   Root POM - pom.xml
+   Goals n options - clean package
+
+Build Settings
+ publish checkstyle ananlysis resuls
+ Publish FindBugs analysis results
+ Publish PMD analysis results
+ Email Notification
+
+   Goals n options - clean package checkstyle:checkstyle findbugs:findbugs pmd:pmd
+
+build
+
+multiple time build
+
+post build actions> publish combined static analysis results
+  checkstyle warnings
+  findbugs warnings
+  PmD warnings             (check all) 
+     
+status thresholds- 
+
+
+post build actions
+Deploy war/ear to a container
+war/ear files target/petclinic.war
+containers- tom 8.x remote
+            url: 
+            setup credentials
+save 
+
+and build the job
+
+
+
+(under workspace>target>petclinic)
