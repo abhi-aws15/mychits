@@ -1,0 +1,937 @@
+ 7. we will setup cluster using kubeadm tool
+
+8. Kubernetes Controlling your cluster from Personal Laptop Windows OS other than the control plane node
+
+Master node- 192.168.1.5
+Worker node- 192.168.1.7
+
+Note: bring the file from master /etc/kubernetes/admin.conf and paste it on 
+laptop in c drive in users inside .kube and rename the file (admin.conf->config)..
+# Then download a software kubectl to do everything from right here
+
+LAB
+Download kubectl from kibernetes official website. Copy the exe file and 
+paste it on the kubernetes(create in c drive)
+right click > properties > advanced system settings > environment variables
+   variable name: PATH
+   variable value: c:\kubernetes
+----------------------------------------------------------------------------
+Now on master node cd /etc/kubernetes..bring admin.conf to laptop
+Use winscp to copy
+create a folder in C:\users\Abhishek\.kube ... and drag and drop admin.conf
+Then rename it config
+----------------------------------------------------------------------------
+Now on cmd 
+kubectl get nodes    #u can see the nodes
+kubectl get cs
+kubectl -n kube-system get pods  #u can see the components
+kubectl run web-server --image=nginx  #to create a pod
+-----------------------------------------------------------------------------
+10. FROM LINUX
+on google- kubectl install on centos
+#wget paste the link
+#chmod +x ./kubectl
+#mv ./kubectl /usr/local/bin/kubectl
+#kubectl (kubectl works)
+#scp root@mastersIP:/etc/kubernetes/admin.conf . (bring the conf file to local linux machine)   
+#mkdir .kube
+#mv admin.conf .kube/
+go inside .kube and rename the file
+#mv admin.conf config
+
+
+#kubectl get nodes ( it works now )
+
+9. Kubernetes kubeadm Cluster upgdare from old version to the new version
+
+Note:- whenever upgrading do it one by one.
+       always ensure to keep backup(config files & etcd database
+                                    /etc/kubernetes/manifest   /var/lib/etcd)
+       Master node alwasy keeps backup by itself in /tmp
+       u can mount network storage on /tmp file (to keep automatic backup) 
+
+whenever backing up...keep master node in draining mode so that no new pods will be
+scheduled 
+
+to automate upgradation
+ 1. ansible
+ 2.terraform
+ 3.shell script
+ 4.python  
+
+Note: Only minor version can be upgraded not major version
+
+if failed upgrade,, no roll back option
+
+while cluster upgrading , by default pod network doesnt get upgraded
+
+LAB:
+#kubectl get pods
+#kubectl get pods -o wide
+
+on google: kubernetes cluster upgrade > go to official documentation
+
+
+
+#kubectl -n kube-system get pods (to get list of networks) 
+
+while updrading kubeadm keep backup at /etc/kubernetes/tmp 
+
+10. Kubernetes cluster reset/ kubernetes node delete
+#kubeadm reset (conf deltes, certification deletes,api connection looses)
+#kubeadm init
+
+in node
+#kubeadm reset
+#kubeadm join
+-----------------
+kubeadm reset --skip-phases remove-etcd-member (reset without touching the etcd)
+                            cleanup-node
+                            update-cluster-status
+                            preflight
+
+if u do simple reset cd /var/lib/etcd is gone
+
+then again kubeadm init   and other process like before
+
+11. Kubernetes Cluster Token and CA Public Key
+
+kubadm join 192.168.1.6:6443<apiserverip:port> --token u08ux9.62mw1tuisugsi<tokennumber> --discovery-token-ca-cert-hash
+sha:84592sjhbjw9rwubv98fuvds9iwib48549sn98459jfr9gh9g8h3<CApublickey>
+
+token expires after 24hrs
+
+we can skip CA public key ..but if there is not certificate there is no security.
+You can also create custom token And CA public key.
+
+you can disable auto approvl on master so that if key gets compromised anyone cannnot 
+connect his node to the master automatically
+LAB
+on master
+#kubeadm init
+kube the commands and paste it after initialization
+also copy the token and the key and paste it on the worker to add it on the master.
+
+#kubectl get nodes
+#kubeadm token list (u can see 23 hr to expire)
+#openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der
+2>/dev/null | openssl dgst-sha256 -hex | sed 's/^.* //'
+
+you can see the certificate key
+
+#kubeadm token create (token created by u , 24 hrs valid)
+#kubeadm token create --ttl 10m (it will expire after 10 mins)
+                      --ttl 0 (never expire)
+------------------------
+Now we will remove the worker and join it through new token
+on worker1 => #kubeadm reset
+onn master => kubectl delete node worker-1
+
+Now in joining command paste the new token number and use it on worker
+
+kubectl get nodes on master to verify
+---------------------------
+How to skip CA
+first remove the node for practical
+ 
+#kubeadm join 565.6546.646.54:6443 --token hsegfkusfjsfagifuhife --discovery-token-unsafe-skip-ca-verfication
+---------------------------
+kubectl get csr (u  can see automatic approval)
+to disable autoapproval 
+#kubectl delete clusterrolebinding kubeadm:node-autoapprove-bootstrap
+paste the token command on node to join now .... and it will be in a pending status
+#kubectl describe csr csr-pmcmf (u can see which node send the request to join)
+
+to approve manually
+#kubectl certificate approve csr-pmcmf
+-----------------------
+#kubeadm token create --print-join-command (to get the new token as well as cmnd)
+
+12. SETUP KUBernetes cluster on AWS
+EKS- Elastic Kubernetes Service
+ 
+Launch an instance on aws             #Kubernetes Manager
+Create a role also- IAM Full access
+                    S3 FULL ACCESS
+                    ROUTE 53
+                    EC2 FULL ACCESS
+
+conect it through putty
+
+#aws configure
+
+
+Go to IAM > create role > EC2: IAMfullacesss EC2fullaccess s3fullaccess route53. name-awskops
+
+EC2> actions>instance setting > attach role
+
+now on putty,
+#aws configure
+blank entre as u have given iam role
+defaultregion:useast-1
+output-table
+
+route53 > create hosted zone> domain name: sanjaydahiya.com
+                              comment: sanjaydahiya.com
+                              type: private hosted zone
+                              vpc id: vpc of n.virgnia
+#install kubectl on machine
+follow steps but
+mv /usr/local/bin/kubectl /bin
+
+#now install kops
+now s3
+#aws s3 mb s3://dev.k8s.sanjaydaiya.in
+
+9.Expose environment variable:
+export KOPS_STATE_STORE=s3://dev.sanjaydahiya.in
+
+
+#kubectl get pods -o wide (u will see pods ip .. if u do curl u cannt access)
+so we have to expose port 
+#kubectl get service (no service)
+#kubectl expose deployment web-server --type NodePort
+#kubectl get service (u can see nodeport service gave the deployment a cluster-ip with port) 
+  web-server Nodeport 100.70.191.253 <none> 80:30292/TCP
+#curl publicipofoutsideinstance:30292  (Troubleshoot aws sg if still doesnot works make it all)
+
+Removing POrt now
+#kubectl get services (u see nodeport)
+but if u create loadbalancer service, it will get its own ip
+#kubectl delete service web-service
+#kubectl expose deployment web-server --type LoadBalancer
+
+#kubectl get service (u can see elb and it has been accesed with a node port also)
+elb is created and u get a host name 
+
+create a public hosted zone > verfiy it on godaddy
+..go to godaddy,click on ur domain,domain manager
+  update ur namesrver..copy from aws hosted zone and paste it here
+
+now create REcord set on aws..
+  Name: www.sanjaydahiya.com
+  Type: A-IPv4 addresss
+  alias : choose elb addresss
+
+create
+-----------------------------------------------------------------------------------
+13. Kubernetes Kubeless Cluster USe Case
+
+katacoda > search > kubernetes kubeless > start scenario
+
+#kubectl get nodes
+#kubectl run web-server --image=nginx
+#kubectl get pods
+------------------------------------------------------------------------------------
+14. Kubernetes How to create POD
+kubectl get node   (list of nodes)
+kubectl describe node master (details abut master node)
+kubectl describe node worker1
+
+kubectl run web-server --image=nginx  (create a pod named web-server)
+kubectl get pods                       (to see pod)
+kubectl get pods -o wide   (u can see ip of pod and on which node it has gone to)
+kubectl describe pod web-server  (u can see each n ever detail abut the pod and container 
+                                  u can see container ID namspace etc
+                                  u can do docker container ls on worker to verify
+                                  
+by default a container named 'pause' is created first which maintains namespace & ip of pod)
+
+kubectl run web-server2 --image=nginx
+kubectl run web-server3 --image=nginx  
+#every pod will go to worker as the scheduling of pods on the master is diabled by default
+ if u do kubectl describe node master .. in Taints=no scheduling is written
+
+kubectl taint nodes --all node-role.kubernetes.io/master  (to remove taints)
+
+now create pods and verify with -o wide command u can see pods are scheduling in master also
+
+kubectl delete pod dev-server (to delete pod )
+kubectl delete pod --all (delete all pod)
+
+kubectl explain pod (what entites should be written inside file to make pod
+                     apiVersion
+                     kind
+                     metadata
+                     spec
+                     status)
+
+#FILE METHOD#
+
+#vim web.yml
+apiVersion: v1
+kind: Pod
+metadata:
+   name: web-server
+spec:
+   containers:
+    - name: web-server
+      image: nginx
+#kubectl apply -f web.yml
+#kubectl get pod (to verfiy)
+#kubectl delete -f web.yml (delete pod)
+
+#kubectl exec -it web-server /bin/bash (to go inside pod)
+#kubectl exec -it web-server -c web-sev-ctn /bin/bash (pod may contain many containers to go inside specific containers -c container-name)
+
+#kubectl run -it dev-server --image=ubuntu:14.04 (to get inside container while creating the pod)
+delete pod it wont be recreated automatically....
+it will automatically be created if replica set deployment set is there
+
+15. Kubernetes replication COntroller,Replica set and deployment
+
+topic is kind of k8s pod controller. as there is no controller , the deleted pod wont
+be recreated. controller is called rplication... 3types of replications are there-
+         1.replication controller- it monitors the pod. if smthing happens it recreates it 
+if something happens. It can manange multiple pods. Throough lables it knows which pods it
+has to control. Lable is nothing but a key value pair. In Selector we mention team=dev.
+If someone wants to access from outside then we create a service on replication controller.
+(service are of three types-ClusterIP,Nodeport,LB)
+we create load-balancer service. we can also mention that if cpu utilisationis more or les
+create 4 more pods.
+equity based selector supports. rolling update supports (application can be upgraded to new version
+
+         2. replica set- advance feature. here u can set number of Labels
+    manage team=dev,team=prod ignore team=txt. use service load-balancer to
+    access from outside
+equity based and set based selector supports \ rolling update doesnt sipports
+
+         3. deployment- same as replica set. team=dev,team=prod. Deployment is
+above replica set .. now create service load-balancer on deployment,,,
+same as replica set ..but now both rolling update and roll out can be done here
+--------------------------------------------------------------------------------------                                                     
+16 Kubernetes Replication COntroller LAB
+
+#kubectl run web --image=nginx
+#kubectl get pod                 (verify a pod is running)
+#kubectl describe pod web         (controller is written here..but abhi nahi h controler)
+#kubectl delete pod web
+#kubectl explain rc         (doc about replication controller)
+#kubectl explain rc --recursive | less (to check the details of the parameter)
+
+#vim rc.yml
+apiversion: v1
+kind: ReplicationController
+metadata:
+  name: cloudknowledges
+spec:
+  replicas: 3                     #3 pods will be under this replication whose key#
+  selector:                       #whose key value is team=dev#
+     team: dev
+  template:                         #pod configuration#
+     metadata: 
+         name: cloudknowledges
+         labels: 
+             team: dev
+     spec:
+      containers:
+        - name: cloudknowledges
+          image: nginx:1.7.1
+          ports:
+          - containerPort: 80
+
+#kubectl get rc                   #it will list the replication controllers if u have any#
+#kubectl get pod,rc               #see both things#
+
+#kubectl apply -f rc.yml          #create the yml file, kbctl get pod,rc to see 3 pods and 1 rc running #
+#kubectl get pod,rc --show-labels #to see 3 pods, 1rc and labels#
+
+#kubectl delete pod cloudknowledges-k77sf #u will a pod delted and a pod created soon after#
+#kubectl describe pod cloudknowledges-k77sf #here also u can see rc#
+#kubectl describe rc cloudknowledges   #to describe rc #
+
+#kubectl delete -f rc.yml  #rc deleted pod terminated#
+--------------
+#kubectl run web --image=nginx    #by default it gets label run=web#
+#kubectl label pod web run-       #to remove label#
+#kubectl label pod web team=dev   #give ur level#
+#kubectl apply -f rc.yml          #if u create this file 2 pods will be created as
+                                   one pod is already there team=web#
+
+#to trobule shoot, we takeout the pod from under the controller by removing labels#
+#if we do troubleshooting inside rc if mthings happen to pod it will remove n recreate a new pod#
+
+#kubectl label pod web team- #removing label#
+a new pod will be created as the desired value is 3,,, aftertroubleshooting if u add labels again it will go inside rc
+#kubectl delete rc --cascade=false cloudknowledges   #to delete controller only not pods cloudknowleds=rc name#
+
+https://www.mirantis.com/blog/kubernetes-replication-controller-replica-set-and-deployments-understanding-replication-options/
+------------------------------------------------------------------------------------------
+17.Kubernetes Replication Controller Rolling Update
+suppose, 
+3 pods nginx:1.7.1 are parts of replication controller and there is service load balancer
+on top of it..it is connected to internet and from outside u can access it.
+now the task is to update to nginx:1.7.1 to 1.9...for that update RC.
+so in yml file mention image should be 1.9
+we will use rolling update cmnd
+In backend new RC WILL be created, new image pods will be created.. one new pod creates
+one old one deletes, again one creates , one deltes . Then both old n new RC deltes 
+and new RC creates with old RC name. so service loadbalncer be like oh same name>>
+so forward trafiic here. So kind of downtime we get so we use deployment controller.
+doesnot support in latest k8s 
+LAB
+on katacoda
+#kubectl get node
+#vim rc.yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+    name: dev-team
+spec:
+  replicas: 3
+  selector:
+     app: nginx
+  template:
+     metadata:
+        name: nginx
+        labels:
+          app: nginx
+     spec: 
+       containers:
+        - name: nginx
+          image: nginx:1.7.1
+          ports:
+           - containerPort: 80
+#kubectl apply -f rc.yml
+#kubectl get all
+#kubectl describe rc (u can see image 1.7 we have to upgrade this)
+
+#vim rc.yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+    name: update-team
+spec:
+  replicas: 3
+  selector:
+     app: update
+  template:
+     metadata:
+        name: nginx
+        labels:
+          app: update
+     spec: 
+       containers:
+        - name: nginx
+          image: nginx:1.9.1
+          ports:
+           - containerPort: 80
+#kubectl rolling-update dev-team --update-period=10s -f rc.yml
+#kubectl describe rc (to verify)
+
+ROLL BACK (UNDO)
+Same process ... edit rc.yml
+another way to update without touch yml file
+#kubectl rolling-update dev-team --image=nginx:1.7.1
+
+https://ryaneschinger.com/blog/rolling-updates-kubernetes-replication-controllers-vs-deployments/
+-----------------------------------------------------------------------------------
+18.Kubernetes Replica Set Lab
+
+creating two pods
+#kubectl run dev --image=nginx
+#kubectl run prod --image=nginx
+removing default lable run=dev
+#kubectl label pod dev run-
+#kubectl label pod prod run-
+assinging own label
+#kubectl label pod dev team=dev
+#kubectl label pod prod team=prod
+#kubectl apply -f rc.yml (what will happen is it will only create 2 and acquire the available pod team=dev)
+
+now remove the label of dev pod and delete the rc.yml .. otherwise if u dont remove 
+the label and delete rc it will delete all the the pods including dev...we need to
+keep dev pod for our practical
+
+#kubectl label pod dev team-
+#kubectl delete -f rc.yml
+
+#kubectl label pod dev team=dev
+
+now making a replica set file
+#kubectl explain rs   
+#vim rs.yml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+    name: dev-team
+spec:
+  replicas: 3
+  selector:
+     matchExpressions:
+      - key: team
+        operator: In
+        values:
+          - dev
+          - prod
+          - test
+  template:
+     metadata:
+        name: nginx
+        labels:
+          team: dev
+     spec: 
+       containers:
+        - name: nginx
+          image: nginx:1.7.1
+          ports:
+           - containerPort: 80
+
+#kubectl apply -f rs.yml
+
+to ignore values add the below thing in the file
+        - key: team
+          operator: NotIn
+          values:
+            - test
+
+delete old pods or delete rs and create sm pods manually
+#kubectl run dev --image=nginx (prod , test)
+#kubctl label pod dev run-  remove default label for prod test also
+
+#kubectl label pod dev team=dev  
+#kubectl label pod prod team=prod
+#kubectl label pod dev team=test     
+
+----------------------------------------------------------
+19. Kubernetes Deployment Lab
+pod controll krne ke 3 tarike
+replication controller, replica set, deployment
+
+Replica set ke upar deployment banadiya... aur baki pura replica set jaisa hai.
+aur service deployment k upar banate hai to get access from outside.
+BACKEND description-
+jaise hi rolling update create krunga, ek naya replica set create hoga, it gets connected
+to deployment. deployment is connected to new and old both replica set. Now one new 
+pod gets created in new replica sset and 1 gets deleted in old replica set.
+
+after creation of 3 pods it deletes the connection from old replica set. delete nai
+kreaga RS ko bs connection hata dega. UNDO HO SKTA HAI ISLIYE
+less downtime
+
+#kubectl get node
+#kubectl explain deployment
+#vim deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudknowledges
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.1
+        ports:
+        - containerPort: 80
+
+#kubectl apply -f deployment.yml
+#kubectl describe deployment  (u can rs connected to deployment in the descriptn)
+
+if u want scaling edit the yaml file and menion replicas: 10
+
+20. k8s deployment rollout,rollback,pause,resume
+#kubectl apply -f deployment.yml
+#kubectl rollout history deployment.apps/cloudknowledges
+REVISION CHANGE-CAUSE
+1        <none>
+
+##kubectl apply -f deployment.yml --record=true
+Then in CHANGE-CAUSE u can see the the cmd itself
+
+ROll out -update
+change the image version in the yml file  and
+kubectl apply -f deployment.yml --record=true 
+or
+kubectl set image deployment.apps/cloudknowledges nginx=nginx:1.16.1 --record=true
+or
+kubectl edit deployment.apps/cloudknowledges
+    edit image: nginx:1.14.1
+Now to roll back......
+#kubectl rollout history deployment.apps/cloudknowledges --revision=2 (check history)
+#kubectl rollout undo deployment.apps/cloudknowledges --to-revision=4
+
+now pausing roll out option,,so that onecannot changes anything
+#kubectl rollout pause deployment.apps/cloudknowledges
+#kubectl rollout resume deployment.apps/cloudknowledges  (u can do rollout rollback and pause)
+
+21. Kubernetes Deployment strategies
+
+
+
+22.
+
+#vim deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudknowledges
+  labels:
+    app: nginx
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.1
+        ports:
+        - containerPort: 80
+#kubectl apply -f deployment.yml
+#kubectl describe deployment cloudknowledges   (u can see 1.7 image)
+
+now roling out
+#vim deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudknowledges
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  strategy:
+    rollingUpdate:
+       maxSurge: 4
+       maxUnavailable: 0
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.11.1
+        ports:
+        - containerPort: 80 
+#kubectl apply -f deployment.yml
+
+#kubectl delete -f deployment.yml
+
+NOW RECREATE
+#vim deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudknowledges
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.1
+        ports:
+        - containerPort: 80 
+#kubectl apply -f deployment.yml
+
+#kubectl explain deployment --recursive | less
+
+23.about k8s services ON COPY
+
+24. k8s sevices cluster ip 
+
+#kubectl get nodes -o wide
+u can see two nodes master and worker and their respective ips
+#watch kubectl get all
+
+on new terminal
+#vim web-server.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudknowledges
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.1
+        ports:
+        - containerPort: 80 
+
+#vim db-server.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-server
+  labels:
+    app: db-server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: db-server
+  template:
+    metadata:
+      labels:
+        app: db-server
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.1
+        ports:
+        - containerPort: 80 
+
+#kubectl apply -f web-server.yml
+#kubectl apply -f db-server.yml
+
+#kubectl get all -o wide (u can see deployment,replicaset, pods with ip)
+
+now go inside web-server pod and curl db pod
+kubectl exec -it web-server-84c6336auehi646 /bin/bash
+ curl 172.16.226.83[dbpod ip]
+
+if somehow db pod gets deletd but u hv hardcoded the db pod ip in webserver
+kubectl delete pod db-server-jgsklfkkbs
+
+a new db pod will emerge by itself..with new ip now u hv to hard code the new ip again
+ curl newdbpodIP  {it wont work}
+
+making service
+#kubectl expose deployment db-server --type=ClusterIP --port 80 --target-port=80
+service/db-server exposed
+
+now sit at webserver pod and curl service IP of db-server deployment 
+ curl 10.104.224.68{service/db-seerver}
+
+kubectl describe service db-server
+u can see that port 80 is maped to the port of pod, if u delete pod a new pod will be 
+created, and here endpoint will be changed with new db-server pod ip
+
+Now creating service for web deployment through yml file this time
+#vim websv.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: web-server
+  ports:
+    -  protocol: TCP
+       port: 80
+       targetPort: 9376
+#kubectl apply -f wevsv.yml
+
+now if u curl ip of service web-server u should see the pods stuff... coz its port is exposed
+but not working for sm issue
+#kubectl expose deployment web-server --type=clusterIP --port 80
+now curl service-webserverIP
+yu do curl from other node also u get access
+from browser outside cluster if u curl..u wont get access
+
+
+kubectl delete svc db-server
+kubectl delete svc web-server
+
+kubectl delete -f web-server.yml
+kubectl delete -f db-server.yml
+
+by default a service is always runnin if u delete it recovers
+kubectl delete service kubernetes
+
+kubectl -n kube-system get pods -o wide (u get the components ip same as clusterip)
+
+25. K8S NODE PORT
+dbserver deployment ko bhar se access nai denge so cluster ip use krenge
+webserver deployment ko bahar se access dena h isliye nodeport ip use krenge
+
+#kubectl get node -o wide
+master node
+worker node
+
+#kubectl get all -o wide (no services at the moment)
+
+#vim webserver.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-server
+  labels:
+    app: web-server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: db-server
+  template:
+    metadata:
+      labels:
+        app: db-server
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.1
+        ports:
+        - containerPort: 80 
+#kubectl apply -f web-server.yml
+now create service
+#kubectl expose deployment web-server --type=ClusterIP
+if u curl this ip from cluster u get access but from outside u dont
+for outside access give nodeport 
+#kubectl expose deployment web-server --type=NodePort
+it will say alredy exits .. at a time only one service u can use
+delete old service then apply
+#kubectl delete service web-server
+#kubectl expose deployment web-server --type=NodePort
+ u get both clusterip and port>together called node port..the port 31974 is exposed on each n 
+every node ip.. and 80 is exposed on cluster IP
+
+on browser any nodeip:31974 u can get access
+
+2 pods we have .. changing sm stuff in one pod to check the round robin fashion
+kubectl exec -it web-server-52790843902-u2948 /bin/bash
+u r inside /usr/local/nginx/html
+echo "welcome to pod1" > index.html
+service apache2 restart
+
+same do it with second pod......
+
+26. LOADBALANCER K8S service
+3kubectll get all
+#vim web-server.yml
+#kubectl apply -f we-server.yml  (deployment )
+#kubectl expose deployment we-server --type=LoadBalancer
+
+on google metallb load balancer
+----installation----follow the steps-----then configuration
+#vim melatlb.yml
+paste from configuration k8s.doc web describe ip pool
+#kubectl apply -f metallb.yml
+
+now do kubectl get all u get the ip of metallb . hit that on browser and you can gt acceess to it
+
+27. SET UP MetalLB
+
+28. INIT containers
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', "until nslookup myservice.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
+  - name: init-mydb
+    image: busybox:1.28
+    command: ['sh', '-c', "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"]
+
+init containers mein ....nslookup krke service khojega... jaise hi service milega initit container
+band hoga aur main contaianer create hoga....
+to abhi service mil nahi pa rahi ..chalo service banate hai
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9376
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mydb
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9377
+
+ye ban gayi service upar..ab init containers ko service mil gya ab ye delete hoga aur main conatiner
+chalu hoga
+------------------------------------------
+ek aur example dekhiye
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-demo
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: workdir
+      mountPath: /usr/share/nginx/html
+  # These containers are run during pod initialization
+  initContainers:
+  - name: install
+    image: busybox
+    command:
+    - wget
+    - "-O"
+    - "/work-dir/index.html"
+    - http://info.cern.ch
+    volumeMounts:
+    - name: workdir
+      mountPath: "/work-dir"
+  dnsPolicy: Default
+  volumes:
+  - name: workdir
+    emptyDir: {}
+
+
+apply aur describe krke dekhlo
+
+30.
